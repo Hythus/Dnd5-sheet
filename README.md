@@ -1,6 +1,26 @@
 # 🐉 Chronique du Héros — Fiche de Personnage D&D 5e Interactive
 
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://share.streamlit.io)
+[![D&D 5e SRD](https://img.shields.io/badge/Règles-D%26D%205e%20Officiel%20FR-8b0000.svg)](https://dnd.wizards.com)
+[![Python](https://img.shields.io/badge/Python-3.13-blue.svg)](https://python.org)
+
 Application Web interactive motorisée par **Streamlit** et les règles officielles françaises de **Donjons & Dragons 5e (SRD & Extensions officielles)**.
+
+---
+
+## 🌐 Déploiement en 1 Clic (Accès Web Public sans code)
+
+Pour que n'importe quel joueur puisse ouvrir la fiche directement dans son navigateur sans installer Python ni exécuter de code :
+
+1. Rendez-vous sur **[share.streamlit.io](https://share.streamlit.io)** et connectez-vous avec votre compte **GitHub**.
+2. Cliquez sur **« New app »**.
+3. Renseignez :
+   - **Repository** : `<votre-pseudo>/Dnd-5-sheet`
+   - **Branch** : `main`
+   - **Main file path** : `app_dnd.py`
+4. Cliquez sur **« Deploy! »**.
+
+Votre application sera instantanément en ligne avec une URL publique permanente (ex: `https://dnd-5-sheet.streamlit.app`). Il suffira de cliquer dessus pour ouvrir une fiche perso vierge interactive !
 
 ---
 
@@ -13,10 +33,16 @@ Application Web interactive motorisée par **Streamlit** et les règles officiel
 - **🛡️ Classes Officielles Françaises & Extensions** :
   - Les 13 classes avec terminologie officielle française (ex: *Occultiste* pour Warlock, *Artificier*...).
   - Sous-classes issues des manuels officiels et extensions (*Manuel des Joueurs / PHB*, *Guide des Monstres / XGtE*, *Chaudron Magique de Tasha / TCoE*, *Explorer's Guide to Wildemount / EGtW*).
+  - Déblocage automatique des sous-classes à partir du **Niveau 3**.
 
-- **📜 Aptitudes de Classe Cliquables & Interactives** :
-  - Chaque aptitude s'ouvre d'un clic pour révéler son résumé, sa source, son type d'action et son **texte officiel complet**.
-  - Ajout rapide depuis le catalogue d'aptitudes ou création d'aptitudes personnalisées.
+- **🚀 Sorts à Plus Haut Niveau (Upcasting Dynamique)** :
+  - Sélection de l'emplacement de sort utilisé pour l'incantation.
+  - Calcul dynamique et automatique des dégâts, soins et cibles selon le niveau d'emplacement consommé.
+
+- **📜 Aptitudes de Classe Évolutives & Cliquables** :
+  - Chaque aptitude s'ouvre d'un clic pour révéler sa source, son type d'action et son **texte officiel complet**.
+  - **Mise à l'échelle dynamique** selon les niveaux de classe (*Attaque Sournoise*, *Second Souffle*, *Rage*, *Points de Ki*, etc.).
+  - Déblocage automatique des nouvelles aptitudes lors des montées de niveau.
 
 - **❤️ Gestion des Points de Vie & PV Temporaires** :
   - PV Actuels et PV Max avec barre d'état dynamique.
@@ -45,7 +71,7 @@ Application Web interactive motorisée par **Streamlit** et les règles officiel
 
 ---
 
-## 🚀 Démarrage Rapide
+## 🚀 Utilisation en Local (Alternative)
 
 ### 1. Activer l'environnement virtuel
 ```powershell
@@ -56,13 +82,14 @@ Application Web interactive motorisée par **Streamlit** et les règles officiel
 ```powershell
 streamlit run app_dnd.py
 ```
-L'application s'ouvrira automatiquement à l'adresse : `http://localhost:8501`.
+L'application s'ouvrira à l'adresse : `http://localhost:8501`.
 
 ---
 
 ## 📁 Architecture du Projet
 
 - `app_dnd.py` : Application principale Streamlit avec interface médiévale fantastique.
-- `dnd_database.py` : Base de données des 13 classes, sous-classes, sorts, armes, armures et aptitudes officielles en français.
+- `dnd_database.py` : Base de données des 13 classes, sous-classes, sorts, armes, armures, progression et aptitudes officielles en français.
 - `dnd_importer.py` : Moteur d'importation PDF (AcroForm/texte) et JSON.
-- `Fiche perso.py` : Script original de modélisation du personnage Hythus.
+- `hythus_feuille_d_argent.json` : Fiche d'exemple complète de Hythus exportée en JSON.
+- `requirements.txt` : Dépendances légères et optimisées pour le déploiement Cloud.
