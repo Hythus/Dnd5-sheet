@@ -629,44 +629,332 @@ SPELLS_DB = {
 
 ITEMS_DB = {
     # Équipement d'aventurier
-    "Sac à dos d'aventurier": {"category": "Aventurier", "weight": 2.5, "desc": "Sac spacieux permettant de ranger jusqu'à 15 kg ou 0,04 m³ d'équipement."},
-    "Paillasse (sac de couchage)": {"category": "Aventurier", "weight": 3.0, "desc": "Lit pliable et chaud indispensable pour les repos longs."},
-    "Corde en chanvre (15 m)": {"category": "Aventurier", "weight": 5.0, "desc": "Corde solide de 15m. Possède 2 points de vie et DC 17 FOR."},
-    "Corde en soie (15 m)": {"category": "Aventurier", "weight": 2.5, "desc": "Corde légère en soie de 15m. Possède 2 points de vie et DC 17 FOR."},
-    "Lanterne sourde": {"category": "Aventurier", "weight": 1.0, "desc": "Projette une lumière vive sur 18m et faible sur 18m supplémentaires. Un volet permet d'occulter la flamme."},
-    "Torche (lot de 5)": {"category": "Aventurier", "weight": 2.5, "desc": "Brûle pendant 1 heure en produisant une lumière vive sur un rayon de 6m."},
-    "Rations de voyage (1 jour)": {"category": "Aventurier", "weight": 1.0, "desc": "Nourriture sèche compacte suffisante pour un aventurier pendant un jour."},
-    "Outre d'eau": {"category": "Aventurier", "weight": 2.5, "desc": "Gourde en cuir étanche pouvant contenir jusqu'à 2 litres d'eau."},
-    "Boîte d'amadou": {"category": "Aventurier", "weight": 0.5, "desc": "Silex, briquet d'acier et amadou pour allumer un feu."},
-    "Grappin": {"category": "Aventurier", "weight": 2.0, "desc": "Crochet d'acier à 4 dents permettant d'ancrer une corde."},
-    "Pied-de-biche": {"category": "Aventurier", "weight": 2.5, "desc": "Donne l'avantage aux tests de Force lorsqu'on cherche à faire levier."},
-    "Huile (flacon)": {"category": "Aventurier", "weight": 0.5, "desc": "Alimente une lanterne pendant 6h ou s'enflamme pour 5 dégâts."},
-    "Menottes en fer": {"category": "Aventurier", "weight": 3.0, "desc": "Entraves métalliques robustes (DC 20 DEX pour s'échapper, DC 20 FOR pour briser)."},
-    "Craie (morceau)": {"category": "Aventurier", "weight": 0.05, "desc": "Utile pour marquer les portes et repérer son chemin."},
-    "Gamelle en métal": {"category": "Aventurier", "weight": 0.5, "desc": "Casserole en étain et couverts pour cuisiner au campement."},
-    
-    # Objets magiques & vêtements
-    "Cape de protection (+1 CA & Sauvegardes)": {"category": "Objet magique", "weight": 0.5, "desc": "Harmonisation requise. Confère un bonus de +1 à la CA et à tous les jets de sauvegarde."},
-    "Cape elfique (Avantage Discrétion)": {"category": "Objet magique", "weight": 0.5, "desc": "Harmonisation requise. Les créatures ont un désavantage aux tests de Perception pour vous voir et vous avez l'avantage en Discrétion."},
-    "Anneau de protection (+1 CA & Sauvegardes)": {"category": "Objet magique", "weight": 0.05, "desc": "Harmonisation requise. Confère un bonus de +1 à la CA et aux jets de sauvegarde."},
-    "Anneau d'action libre": {"category": "Objet magique", "weight": 0.05, "desc": "Harmonisation requise. Vous ignorez les terrains difficiles et ne pouvez être paralysé ni entravé par la magie."},
-    "Bottes elfiques": {"category": "Objet magique", "weight": 0.5, "desc": "Vos bruits de pas sont étouffés. Vous bénéficiez de l'avantage aux tests de Dextérité (Discrétion)."},
-    "Sac sans fond (Bag of Holding)": {"category": "Objet magique", "weight": 7.0, "desc": "Pèse toujours 7 kg mais peut contenir jusqu'à 250 kg et 1,8 m³ à l'intérieur."},
-    "Vêtements fins de noble": {"category": "Vêtements", "weight": 3.0, "desc": "Habits soignés en soie et broderies."},
-    "Vêtements de voyageur": {"category": "Vêtements", "weight": 2.0, "desc": "Bottes renforcées, cape chaude et pourpoint résistant."},
-    
-    # Potions & Consommables
-    "Potion de soins (2d4+2)": {"category": "Potion", "weight": 0.2, "desc": "Action pour boire. Restaure 2d4 + 2 points de vie immédiatement."},
-    "Potion de soins supérieure (4d4+4)": {"category": "Potion", "weight": 0.2, "desc": "Action pour boire. Restaure 4d4 + 4 points de vie immédiatement."},
-    "Potion d'invisibilité": {"category": "Potion", "weight": 0.2, "desc": "Confère l'invisibilité pendant 1 heure ou jusqu'à attaque."},
-    "Antidote (fiole)": {"category": "Potion", "weight": 0.1, "desc": "Boire confère l'avantage aux jets de sauvegarde contre le poison pendant 1 heure."},
+    "Sac à dos d'aventurier": {
+        "category": "Aventurier", "weight": 2.5,
+        "keywords": ["sac a dos", "havresac"],
+        "desc": "Sac spacieux permettant de ranger jusqu'à 15 kg ou 0,04 m³ d'équipement."
+    },
+    "Paillasse (sac de couchage)": {
+        "category": "Aventurier", "weight": 3.0,
+        "keywords": ["paillasse", "sac de couchage", "couverture"],
+        "desc": "Lit pliable et chaud indispensable pour bivouaquer lors des repos longs."
+    },
+    "Corde en chanvre (15 m)": {
+        "category": "Aventurier", "weight": 5.0,
+        "keywords": ["corde en chanvre", "corde"],
+        "desc": "Corde solide de 15m. Possède 2 points de vie et peut être rompue sur un test de Force DD 17."
+    },
+    "Corde en soie (15 m)": {
+        "category": "Aventurier", "weight": 2.5,
+        "keywords": ["corde en soie"],
+        "desc": "Corde légère et résistante en soie de 15m (2 PV, Force DD 17 pour rompre)."
+    },
+    "Lanterne sourde": {
+        "category": "Aventurier", "weight": 1.0,
+        "keywords": ["lanterne", "lanterne sourde", "lanterne a capote"],
+        "desc": "Projette une lumière vive sur un cône de 18m et faible sur 18m supplémentaires. Un volet permet d'occulter la flamme."
+    },
+    "Torche (lot de 5)": {
+        "category": "Aventurier", "weight": 2.5,
+        "keywords": ["torche"],
+        "desc": "Brûle pendant 1 heure en produisant une lumière vive sur un rayon de 6m et faible sur 6m de plus."
+    },
+    "Rations de voyage (1 jour)": {
+        "category": "Aventurier", "weight": 1.0,
+        "keywords": ["ration", "rations", "vivres", "nourriture"],
+        "desc": "Nourriture sèche compacte (viande séchée, fruits secs, biscuits) suffisante pour nourrir un aventurier pendant 1 journée."
+    },
+    "Outre d'eau / Collecteur d'eau": {
+        "category": "Aventurier", "weight": 1.5,
+        "keywords": ["outre", "collecteur d'eau", "collecteur eau", "gourde"],
+        "desc": "Récipient étanche et dispositif de survie permettant de recueillir, filtrer et conserver jusqu'à 2 litres d'eau potable."
+    },
+    "Boîte d'amadou": {
+        "category": "Aventurier", "weight": 0.5,
+        "keywords": ["amadou", "briquet", "silex"],
+        "desc": "Contient du silex, un briquet d'acier et de l'amadou sec pour allumer un feu (1 action)."
+    },
+    "Grappin": {
+        "category": "Aventurier", "weight": 2.0,
+        "keywords": ["grappin"],
+        "desc": "Crochet d'acier à 4 dents permettant d'ancrer une corde sur un rebord ou une muraille."
+    },
+    "Pied-de-biche": {
+        "category": "Aventurier", "weight": 2.5,
+        "keywords": ["pied-de-biche", "pied de biche"],
+        "desc": "Confère l'avantage aux tests de Force lorsque son levier peut être utilisé."
+    },
+    "Huile d'affûtage": {
+        "category": "Potion", "weight": 0.2,
+        "keywords": ["huile d'affutage", "huile affutage", "affutage"],
+        "desc": "Pâte ou huile magique d'entretien pour lame : appliquée sur une arme tranchante ou perforante, elle affûte le tranchant et confère un bonus temporaire aux jets d'attaque et de dégâts."
+    },
+    "Huile (flacon)": {
+        "category": "Aventurier", "weight": 0.5,
+        "keywords": ["flacon d'huile", "huile"],
+        "desc": "Alimente une lanterne pendant 6 heures ou peut être répandue/lancée pour s'enflammer (+5 dégâts de feu)."
+    },
+    "Menottes en fer": {
+        "category": "Aventurier", "weight": 3.0,
+        "keywords": ["menottes", "entraves"],
+        "desc": "Entraves métalliques robustes (Dextérité DD 20 pour s'échapper, Force DD 20 pour les briser)."
+    },
+    "Craie (morceau)": {
+        "category": "Aventurier", "weight": 0.05,
+        "keywords": ["craie"],
+        "desc": "Utile pour marquer les portes et repérer son chemin dans un donjon."
+    },
+    "Gamelle en métal": {
+        "category": "Aventurier", "weight": 0.5,
+        "keywords": ["gamelle"],
+        "desc": "Casserole en étain et couverts pour cuisiner au campement."
+    },
+
+    # Armures & Vêtements
+    "Armure de cuir clouté": {
+        "category": "Vêtements", "weight": 6.5,
+        "keywords": ["armure de cuir cloute", "cuir cloute"],
+        "desc": "Armure légère faite de cuir souple mais résistant, renforcé de rivets métalliques rapprochés. Confère une CA de 12 + modificateur de Dextérité."
+    },
+    "Armure de cuir": {
+        "category": "Vêtements", "weight": 5.0,
+        "keywords": ["armure de cuir"],
+        "desc": "Armure légère souple conférant une CA de 11 + modificateur de Dextérité."
+    },
+    "Vêtements fins de noble": {
+        "category": "Vêtements", "weight": 3.0,
+        "keywords": ["vetements fins", "habits de noble"],
+        "desc": "Habits soignés en soie, velours et broderies."
+    },
+    "Vêtements de voyageur": {
+        "category": "Vêtements", "weight": 2.0,
+        "keywords": ["vetements de voyage", "habits de voyage"],
+        "desc": "Bottes renforcées, cape chaude et pourpoint résistant pour la route."
+    },
+
+    # Objets magiques, Reliques & Parchemins
+    "Cape d'invisibilité": {
+        "category": "Objet magique", "weight": 0.5,
+        "keywords": ["cape d'invisibilite", "cape invisibilite"],
+        "desc": "Objet magique (harmonisation requise). En rabattant la capuche par une action/interaction, vous devenez invisible avec tout votre équipement. L'effet prend fin si vous attaquez ou lancez un sort."
+    },
+    "Cape de protection (+1 CA & Sauvegardes)": {
+        "category": "Objet magique", "weight": 0.5,
+        "keywords": ["cape de protection"],
+        "desc": "Harmonisation requise. Confère un bonus de +1 à la CA et à tous les jets de sauvegarde."
+    },
+    "Cape elfique (Avantage Discrétion)": {
+        "category": "Objet magique", "weight": 0.5,
+        "keywords": ["cape elfique"],
+        "desc": "Harmonisation requise. Les créatures ont un désavantage aux tests de Perception pour vous voir et vous avez l'avantage en Discrétion."
+    },
+    "Broche des pourfendeurs": {
+        "category": "Objet magique", "weight": 0.1,
+        "keywords": ["broche des pourfendeurs", "broche"],
+        "desc": "Insigne distinctif des Pourfendeurs de démons : broche en forme de flèche à pointe de jade perçant une pierre noire qui retient la cape."
+    },
+    "Anneau d'or serti de cornaline": {
+        "category": "Objet magique", "weight": 0.05,
+        "keywords": ["anneau or", "cornaline", "anneau"],
+        "desc": "Bague ouvragée en or massif sertie d'une pierre fine de cornaline rouge-orangée."
+    },
+    "Anneau de protection (+1 CA & Sauvegardes)": {
+        "category": "Objet magique", "weight": 0.05,
+        "keywords": ["anneau de protection"],
+        "desc": "Harmonisation requise. Confère un bonus de +1 à la CA et aux jets de sauvegarde."
+    },
+    "Anneau d'action libre": {
+        "category": "Objet magique", "weight": 0.05,
+        "keywords": ["anneau d'action libre"],
+        "desc": "Harmonisation requise. Vous ignorez les terrains difficiles et ne pouvez être paralysé ni entravé par la magie."
+    },
+    "Effigie Chwinga en onyx": {
+        "category": "Objet magique", "weight": 0.2,
+        "keywords": ["effigie", "chwingua", "chwinga", "onyx"],
+        "desc": "Statuette mystique sculptée dans l'onyx représentant un Chwinga (petit esprit élémentaire de la nature capable d'accorder des charmes surnaturels)."
+    },
+    "Parchemin magique": {
+        "category": "Objet magique", "weight": 0.05,
+        "keywords": ["parchemin", "parchemins"],
+        "desc": "Vélin gravé de glyphes mystiques permettant de déclencher un effet magique ou de lancer un sort sans dépenser d'emplacement."
+    },
+    "Pierre élémentaire d'Eau (Pierre Bleue)": {
+        "category": "Objet magique", "weight": 0.2,
+        "keywords": ["pierre bleue", "pierre eau", "pierre elementaire"],
+        "desc": "Gemme imprégnée de magie élémentaire de l'Eau."
+    },
+    "Bottes elfiques": {
+        "category": "Objet magique", "weight": 0.5,
+        "keywords": ["bottes elfiques"],
+        "desc": "Vos bruits de pas sont étouffés. Vous bénéficiez de l'avantage aux tests de Dextérité (Discrétion) pour vous déplacer en silence."
+    },
+    "Sac sans fond (Bag of Holding)": {
+        "category": "Objet magique", "weight": 7.0,
+        "keywords": ["sac sans fond", "bag of holding"],
+        "desc": "Pèse toujours 7 kg mais peut contenir jusqu'à 250 kg et 1,8 m³ d'équipement dans un espace extradimensionnel."
+    },
+
+    # Potions, Baumes & Consommables
+    "Potion de soins (2d4+2)": {
+        "category": "Potion", "weight": 0.2,
+        "keywords": ["potion de soins mineur", "potion de soin mineur", "potion de soins", "potion de soin"],
+        "desc": "Liquide rouge scintillant (1 action pour boire ou administrer). Restaure immédiatement 2d4 + 2 points de vie."
+    },
+    "Potion de soins supérieure (4d4+4)": {
+        "category": "Potion", "weight": 0.2,
+        "keywords": ["potion de soins superieure", "potion de soins sup", "potion de soin sup", "soins superieure"],
+        "desc": "Élixir rouge concentré (1 action pour boire). Restaure immédiatement 4d4 + 4 points de vie."
+    },
+    "Potion de vitesse (Hâte)": {
+        "category": "Potion", "weight": 0.2,
+        "keywords": ["potion vitesse", "potion de vitesse"],
+        "desc": "Boire cette potion (1 action) confère les effets du sort Hâte pendant 1 minute (sans concentration requise) : vitesse doublée, +2 à la CA, avantage aux sauvegardes de Dextérité et 1 action supplémentaire par tour."
+    },
+    "Potion d'invisibilité": {
+        "category": "Potion", "weight": 0.2,
+        "keywords": ["potion d'invisibilite", "potion invisibilite"],
+        "desc": "Confère l'invisibilité pendant 1 heure (prend fin si vous attaquez ou lancez un sort)."
+    },
+    "Baume médicinal / Onguent de soin": {
+        "category": "Potion", "weight": 0.2,
+        "keywords": ["baume", "baumes", "onguent"],
+        "desc": "Préparation médicinale d'herboristerie permettant d'apaiser les blessures, soigner les brûlures ou stabiliser une créature."
+    },
+    "Antidote (fiole)": {
+        "category": "Potion", "weight": 0.1,
+        "keywords": ["antidote"],
+        "desc": "Boire cette fiole confère l'avantage aux jets de sauvegarde contre le poison pendant 1 heure."
+    },
 
     # Outils & Instruments
-    "Outils de voleur": {"category": "Outils", "weight": 0.5, "desc": "Pieds-de-biche miniatures, crochets, limes et miroirs pour crocheter et désamorcer."},
-    "Outils d'herboristerie": {"category": "Outils", "weight": 1.5, "desc": "Nécessaire pour récolter des herbes et confectionner des potions de soins et antidotes."},
-    "Matériel d'alchimiste": {"category": "Outils", "weight": 4.0, "desc": "Alambics, cornues et réactifs pour produire de l'acide ou du feu grégeois."},
-    "Luth ouvragé": {"category": "Instrument", "weight": 1.0, "desc": "Instrument de musique de barde servant de focaliseur d'incantation."}
+    "Outils de voleur": {
+        "category": "Outils", "weight": 0.5,
+        "keywords": ["outils de voleur", "outils de voleurs", "crochets"],
+        "desc": "Comprend une petite lime, un jeu de crochets de serrurier, un petit miroir monté sur une poignée métallique, des ciseaux à lames étroites et une paire de pinces. Permet d'ajouter votre bonus de maîtrise pour désamorcer des pièges ou crocheter des serrures."
+    },
+    "Serrure d'entraînement": {
+        "category": "Outils", "weight": 0.5,
+        "keywords": ["serrure d'entrainement", "serrure entrainement", "serrure"],
+        "desc": "Mécanisme de serrurerie d'exercice permettant d'entraîner sa dextérité au crochetage avec des outils de voleur."
+    },
+    "Ocarina (Instrument de musique)": {
+        "category": "Instrument", "weight": 0.3,
+        "keywords": ["ocarina", "flute"],
+        "desc": "Instrument à vent en terre cuite ou bois précieux produisant des notes claires et mélancoliques. Vous ajoutez votre bonus de maîtrise aux tests de représentation lorsque vous en jouez."
+    },
+    "Outils d'herboristerie": {
+        "category": "Outils", "weight": 1.5,
+        "keywords": ["herboristerie", "herboriste"],
+        "desc": "Nécessaire contenant sécateur, mortier, pilon et fioles pour identifier les plantes et confectionner des potions de soins et antidotes."
+    },
+    "Matériel d'alchimiste": {
+        "category": "Outils", "weight": 4.0,
+        "keywords": ["alchimiste", "alchimie"],
+        "desc": "Alambics, cornues et réactifs pour produire de l'acide, du feu grégeois ou de l'antidote."
+    },
+    "Luth ouvragé": {
+        "category": "Instrument", "weight": 1.0,
+        "keywords": ["luth"],
+        "desc": "Instrument de musique à cordes pouvant servir de focaliseur d'incantation pour un barde."
+    },
+
+    # Munitions & Trésors
+    "Flèche +1 (Munition magique)": {
+        "category": "Munitions", "weight": 0.05,
+        "keywords": ["fleche +1", "fleches +1"],
+        "desc": "Munition d'arc enchantée conférant un bonus de +1 aux jets d'attaque et aux jets de dégâts. Une fois qu'elle touche une cible, la flèche perd sa propriété magique."
+    },
+    "Flèche normale (Munition d'arc)": {
+        "category": "Munitions", "weight": 0.05,
+        "keywords": ["fleche normale", "fleches normales", "fleche", "carquois"],
+        "desc": "Flèche standard à pointe d'acier pour arc court ou arc long."
+    },
+    "Gemme précieuse (150 PO / unité)": {
+        "category": "Trésor / Gemme", "weight": 0.01,
+        "keywords": ["gemme", "gemmes", "diamant", "rubis", "emeraude", "saphir"],
+        "desc": "Pierre précieuse taillée à haute valeur marchande (150 PO l'unité), facilement transportable et utilisable comme monnaie d'échange ou composante matérielle de sort."
+    }
 }
+
+def match_item_in_db(raw_name: str, treasure_notes: str = "", appearance_notes: str = "") -> tuple[float, str, str]:
+    """
+    Recherche souple de type SQL LIKE (%mot%) dans ITEMS_DB (et les notes du PDF)
+    pour associer automatiquement poids, description et catégorie aux objets rédigés librement par les joueurs.
+    """
+    import unicodedata
+    import re
+
+    def norm_txt(s: str) -> str:
+        nfkd = unicodedata.normalize("NFKD", s.lower())
+        asc = nfkd.encode("ascii", "ignore").decode("ascii")
+        # Normalise les abréviations courantes des joueurs
+        asc = re.sub(r"\bsup\b", "superieure", asc)
+        asc = re.sub(r"\bmin\b", "mineur", asc)
+        return asc.strip()
+
+    n_item = norm_txt(raw_name)
+
+    # 1. Si l'objet est décrit explicitement dans la case Trésor (Page 2) du PDF (ex: Cape d'invisibilité)
+    if "cape" in n_item and "invisibil" in n_item and treasure_notes and "cape" in norm_txt(treasure_notes):
+        clean_tr = " ".join(treasure_notes.splitlines()).strip()
+        return (0.5, clean_tr, "Objet magique")
+
+    # 2. Recherche par mots-clés (priorité aux correspondances les plus longues / précises)
+    best_match = None
+    best_score = 0
+
+    for db_name, db_val in ITEMS_DB.items():
+        n_db = norm_txt(db_name)
+        kws = [norm_txt(k) for k in db_val.get("keywords", [])] + [n_db]
+        for kw in kws:
+            if not kw:
+                continue
+            # Correspondance LIKE "%kw%" dans le nom du joueur ou "%n_item%" dans kw
+            if kw in n_item or (len(n_item) >= 4 and n_item in kw):
+                score = len(kw) + (20 if kw == n_item else 0)
+                if score > best_score:
+                    best_score = score
+                    best_match = db_val
+
+    if best_match:
+        return (best_match.get("weight", 0.0), best_match.get("desc", ""), best_match.get("category", "Aventurier"))
+
+    # 3. Recherche LIKE par intersection de racines de mots (sans pluriels)
+    item_tokens = {w.rstrip("sx") for w in re.findall(r"[a-z0-9+]+", n_item) if len(w) >= 3 and w not in ["les", "des", "une", "aux", "pour", "dans", "avec"]}
+    for db_name, db_val in ITEMS_DB.items():
+        all_text = norm_txt(db_name) + " " + " ".join(norm_txt(k) for k in db_val.get("keywords", []))
+        db_tokens = {w.rstrip("sx") for w in re.findall(r"[a-z0-9+]+", all_text) if len(w) >= 3}
+        common = item_tokens.intersection(db_tokens)
+        if len(common) >= 2 or (len(item_tokens) == 1 and len(common) == 1):
+            score = len(common) * 5
+            if score > best_score:
+                best_score = score
+                best_match = db_val
+
+    if best_match:
+        return (best_match.get("weight", 0.0), best_match.get("desc", ""), best_match.get("category", "Aventurier"))
+
+    return (0.0, "", "")
+
+def get_max_expertises_count(classes: dict) -> int:
+    """
+    Calcule le nombre total d'Expertises de compétences accordées par les niveaux de classe
+    (ex: Roublard Niv 1 = 2, Niv 6 = 4 ; Barde Niv 3 = 2, Niv 10 = 4).
+    """
+    total_exp = 0
+    rogue_lvl = classes.get("Roublard", 0)
+    if rogue_lvl >= 1:
+        total_exp += 2
+    if rogue_lvl >= 6:
+        total_exp += 2
+
+    bard_lvl = classes.get("Barde", 0)
+    if bard_lvl >= 3:
+        total_exp += 2
+    if bard_lvl >= 10:
+        total_exp += 2
+
+    return total_exp
 
 def calculate_currency_total_po(curr: dict) -> float:
     """Calcule la valeur totale d'une bourse en Pièces d'Or (PO)."""

@@ -220,9 +220,18 @@ def parse_class_field_advanced(cand: str) -> Tuple[Dict[str, int], Dict[str, str
 
     return classes, subclasses
 
-def parse_items_from_text(equip_text: str, attacks_notes: str = "") -> List[Dict[str, Any]]:
-    """Découpe un texte d'inventaire en objets individuels structurés."""
+def parse_items_from_text(
+    equip_text: str,
+    attacks_notes: str = "",
+    treasure_notes: str = "",
+    appearance_notes: str = ""
+) -> Tuple[List[Dict[str, Any]], Dict[str, int]]:
+    """
+    Découpe un texte d'inventaire en objets individuels structurés avec recherche LIKE dans ITEMS_DB,
+    et extrait également les pièces additionnelles notées dans l'équipement (ex: '- 850 PO').
+    """
     items = []
+    extra_coins = {"po": 0, "pa": 0, "pc": 0, "pe": 0, "pp": 0}
     raw_lines = re.split(r"[\n\r;•\*\t]+", equip_text)
     expanded_lines = []
     for rl in raw_lines:
@@ -242,33 +251,47 @@ def parse_items_from_text(equip_text: str, attacks_notes: str = "") -> List[Dict
                 ammo_qty = int(m_ammo.group(2))
                 expanded_lines.append(f"{ammo_name} x{ammo_qty}")
 
+    coin_map = {
+        "po": "po", "gp": "po",
+        "pa": "pa", "sp": "pa",
+        "pc": "pc", "cp": "pc",
+        "pe": "pe", "ep": "pe",
+        "pp": "pp"
+    }
+
     for line in expanded_lines:
         clean = line.strip(" -•*\t,").rstrip(".")
         if not clean or len(clean) < 2:
             continue
         
-        if re.match(r"^(?:po|pa|pc|pe|pp|gp|sp|cp|ep)\s*:\s*\d+", clean, re.IGNORECASE):
+        # Format 'PO: 850'
+        m_c1 = re.match(r"^(po|pa|pc|pe|pp|gp|sp|cp|ep)\s*:\s*(\d+)$", clean, re.IGNORECASE)
+        if m_c1:
+            ck = coin_map[m_c1.group(1).lower()]
+            extra_coins[ck] += int(m_c1.group(2))
+            continue
+
+        # Format '850 PO' (pièces notées directement dans l'équipement)
+        m_c2 = re.match(r"^(\d+)\s*(po|pa|pc|pe|pp|gp|sp|cp|ep)$", clean, re.IGNORECASE)
+        if m_c2:
+            ck = coin_map[m_c2.group(2).lower()]
+            extra_coins[ck] += int(m_c2.group(1))
             continue
 
         qty = 1
         name = clean
         
-        # Cas spécial: réserve de pièces dans l'équipement (ex: '850 PO')
-        if re.match(r"^\d+\s*(?:po|pa|pc|pe|pp|gp|sp|cp|ep)\b", clean, re.IGNORECASE):
-            qty = 1
-            name = f"Réserve de trésor : {clean}"
+        # Motif 'Ration x31' ou 'potion de soins mineurx1'
+        m_x = re.search(r"^(.*?)\s*x\s*(\d+)$", clean, re.IGNORECASE)
+        if m_x and m_x.group(1).strip():
+            name = m_x.group(1).strip()
+            qty = int(m_x.group(2))
         else:
-            # Motif 'Ration x31' ou 'potion de soins mineurx1'
-            m_x = re.search(r"^(.*?)\s*x\s*(\d+)$", clean, re.IGNORECASE)
-            if m_x and m_x.group(1).strip():
-                name = m_x.group(1).strip()
-                qty = int(m_x.group(2))
-            else:
-                # Motif '3 baumes' ou '1 collecteur' ou '10 Gemmes (150PO/gemme)'
-                m_pre = re.search(r"^(\d+)\s+x?\s*(.+)$", clean)
-                if m_pre:
-                    qty = int(m_pre.group(1))
-                    name = m_pre.group(2).strip()
+            # Motif '3 baumes' ou '1 collecteur' ou '10 Gemmes (150PO/gemme)'
+            m_pre = re.search(r"^(\d+)\s+x?\s*(.+)$", clean)
+            if m_pre:
+                qty = int(m_pre.group(1))
+                name = m_pre.group(2).strip()
 
         name = name.strip(" -:•")
         if not name:
@@ -291,13 +314,10 @@ def parse_items_from_text(equip_text: str, attacks_notes: str = "") -> List[Dict
         elif any(x in n_low for x in ["flèche", "fleche", "carreau", "munition"]):
             cat = "Munitions"
 
-        weight = 0.0
-        desc = ""
-        for it_db_name, it_db_val in db.ITEMS_DB.items():
-            if it_db_name.lower() in name.lower() or name.lower() in it_db_name.lower():
-                weight = it_db_val.get("weight", 0.0)
-                desc = it_db_val.get("desc", "")
-                break
+        # Recherche souple de type SQL LIKE dans ITEMS_DB (+ notes Trésor / Apparence du PDF)
+        weight, desc, db_cat = db.match_item_in_db(name, treasure_notes, appearance_notes)
+        if db_cat and cat == "Aventurier":
+            cat = db_cat
 
         items.append({
             "name": name,
@@ -307,7 +327,7 @@ def parse_items_from_text(equip_text: str, attacks_notes: str = "") -> List[Dict
             "description": desc,
             "is_equipped": (cat in ["Vêtements", "Objet magique"] and ("armure" in n_low or "cape" in n_low or "anneau" in n_low or "broche" in n_low))
         })
-    return items
+    return items, extra_coins
 
 def parse_json_character(file_bytes: bytes) -> Dict[str, Any]:
     """Parse un fichier JSON et retourne le dictionnaire de données du personnage."""
@@ -333,6 +353,7 @@ def parse_pdf_character(file_bytes: bytes) -> Tuple[Dict[str, Any], str]:
         "raw_abilities": {},
         "saving_throw_proficiencies": [],
         "skill_proficiencies": [],
+        "skill_expertises": [],
         "pv_current": 10,
         "pv_max": 10,
         "pv_temp": 0,
@@ -502,6 +523,15 @@ def parse_pdf_character(file_bytes: bytes) -> Tuple[Dict[str, Any], str]:
             m = re.search(r"\b(\d+)\b", spd_val)
             if m: extracted["speed"] = int(m.group(1))
 
+        # Extraction anticipée de Treasure & Apparence (Page 2) pour enrichir les descriptions d'objets
+        def clean_multiline(txt: Optional[str]) -> str:
+            if not txt:
+                return ""
+            return txt.replace("\x90", "'").replace("\r\n", "\n").replace("\r", "\n").strip()
+
+        extracted["appearance"] = clean_multiline(get_first_val(["apparence", "appearance"], exact=True))
+        extracted["treasure_notes"] = clean_multiline(get_first_val(["treasure", "tresor"], exact=True))
+
         # 5. Monnaies & Devises (recherche EXACTE)
         cur_fields = [
             ("pp", ["pp", "platinum", "platine"]),
@@ -517,13 +547,23 @@ def parse_pdf_character(file_bytes: bytes) -> Tuple[Dict[str, Any], str]:
                 if m_c:
                     extracted["currency"][cur_key] = int(m_c.group(1))
 
-        # 6. Équipement, Armure Équipée & Inventaire
+        # 6. Équipement, Armure Équipée, Pièces additionnelles & Inventaire (avec recherche LIKE)
         attacks_notes = get_first_val(["attacksspellcasting"], exact=True) or ""
         equip_text = get_first_val(["equipment", "equipement", "inventaire", "objets", "sac"], exact=True)
         if not equip_text:
             equip_text = get_first_val(["equipment", "equipement", "inventaire"])
+        extra_coins_from_equip = {"po": 0, "pa": 0, "pc": 0, "pe": 0, "pp": 0}
         if equip_text:
-            extracted["inventory"] = parse_items_from_text(equip_text, attacks_notes)
+            extracted["inventory"], extra_coins_from_equip = parse_items_from_text(
+                equip_text,
+                attacks_notes,
+                extracted["treasure_notes"],
+                extracted["appearance"]
+            )
+            for ck, cv in extra_coins_from_equip.items():
+                if cv > 0:
+                    extracted["currency"][ck] = extracted["currency"].get(ck, 0) + cv
+
             # Détection automatique de l'armure équipée dans l'inventaire
             eq_low = equip_text.lower()
             for arm_name in sorted(db.ARMORS_DB.keys(), key=len, reverse=True):
@@ -588,13 +628,38 @@ def parse_pdf_character(file_bytes: bytes) -> Tuple[Dict[str, Any], str]:
                     "extra_damage_desc": extra_desc
                 })
 
-        # 8. Compétences & Jets de Sauvegarde maîtrisés
+        # 8. Compétences, Expertises (Bonus maîtrise x2) & Jets de Sauvegarde maîtrisés
+        skill_stat_code = {
+            "Acrobaties": "DEX", "Arcanes": "INT", "Athlétisme": "STR", "Discrétion": "DEX",
+            "Dressage": "WIS", "Escamotage": "DEX", "Histoire": "INT", "Intimidation": "CHA",
+            "Intuition": "WIS", "Investigation": "INT", "Médecine": "WIS", "Nature": "INT",
+            "Perception": "WIS", "Persuasion": "CHA", "Religion": "INT", "Représentation": "CHA",
+            "Survie": "WIS", "Tromperie": "CHA"
+        }
         for sk_eng, sk_fr in SKILL_TRANSLATION.items():
             sk_vals = get_all_vals([sk_eng, f"{sk_eng}prof", f"cb{sk_eng}"], exact=True)
             for sv in sk_vals:
                 if sv and sv.lower() not in ["0", "no", "false", "off", "/off"]:
                     if sk_fr not in extracted["skill_proficiencies"]:
                         extracted["skill_proficiencies"].append(sk_fr)
+                    # Vérifie si le bonus numérique correspond déjà à une Expertise (mod + 2 * prof_b)
+                    m_num = re.search(r"[+-]?\d+", sv)
+                    if m_num:
+                        num_v = int(m_num.group(0))
+                        ab_c = skill_stat_code.get(sk_fr, "DEX")
+                        ab_m = math.floor((extracted["raw_abilities"].get(ab_c, 10) - 10) / 2)
+                        if num_v >= ab_m + (2 * prof_b) and sk_fr not in extracted["skill_expertises"]:
+                            extracted["skill_expertises"].append(sk_fr)
+
+        # Attribution automatique des Expertises de classe (Roublard Niv 1 = 2 expertises, etc.) si non cochées à part sur le PDF
+        max_exp = db.get_max_expertises_count(extracted["classes"])
+        if max_exp > len(extracted["skill_expertises"]) and extracted["skill_proficiencies"]:
+            priority_rogue_skills = ["Discrétion", "Perception", "Escamotage", "Investigation", "Acrobaties", "Intuition", "Survie", "Tromperie"]
+            for p_sk in priority_rogue_skills + extracted["skill_proficiencies"]:
+                if len(extracted["skill_expertises"]) >= max_exp:
+                    break
+                if p_sk in extracted["skill_proficiencies"] and p_sk not in extracted["skill_expertises"]:
+                    extracted["skill_expertises"].append(p_sk)
 
         save_mappings = [
             ("STR", ["ststrength", "ststr", "stfor", "stforce"]),
@@ -740,9 +805,14 @@ def parse_pdf_character(file_bytes: bytes) -> Tuple[Dict[str, Any], str]:
     curr_parts = []
     for k_c, lbl_c in [("po", "PO"), ("pa", "PA"), ("pc", "PC"), ("pe", "PE"), ("pp", "PP")]:
         if extracted["currency"].get(k_c, 0) > 0:
-            curr_parts.append(f"{extracted['currency'][k_c]} {lbl_c}")
+            if k_c == "po" and extra_coins_from_equip.get("po", 0) > 0:
+                base_po = extracted["currency"]["po"] - extra_coins_from_equip["po"]
+                curr_parts.append(f"{extracted['currency']['po']} PO ({base_po} case Bourse + {extra_coins_from_equip['po']} Équipement)")
+            else:
+                curr_parts.append(f"{extracted['currency'][k_c]} {lbl_c}")
     bourse_str = ", ".join(curr_parts) if curr_parts else "0 PO"
     exh_str = f" | **Épuisement** : Niveau {extracted['exhaustion']}" if extracted.get("exhaustion", 0) > 0 else ""
+    exp_str = f" (dont **⭐ Expertises x2** : {', '.join(extracted['skill_expertises'])})" if extracted.get("skill_expertises") else ""
 
     summary = (
         f"✅ **Extraction Réussie depuis le PDF :**\n\n"
@@ -750,11 +820,11 @@ def parse_pdf_character(file_bytes: bytes) -> Tuple[Dict[str, Any], str]:
         f"• **Classes & Niveaux** : **{classes_str}**\n"
         f"• **Points de Vie** : **{extracted['pv_current']}/{extracted['pv_max']} PV** | **CA** : **{extracted['armor_class']}** (*{extracted['equipped_armor_name']}*) | **Vitesse** : {extracted['speed']} m{exh_str}\n"
         f"• **Caractéristiques Réelles** : **{abilities_str}**\n"
-        f"• **Bourse & Trésor** : **{bourse_str}**\n"
-        f"• **Inventaire Détecté** : **{len(extracted['inventory'])} objets** dans le sac\n"
+        f"• **Bourse & Trésor à jour** : **{bourse_str}**\n"
+        f"• **Inventaire Détecté** : **{len(extracted['inventory'])} objets** dans le sac (avec descriptions de la base)\n"
         f"• **Arsenal Détecté** : **{len(extracted['weapons'])} armes** ({', '.join([w['name'] for w in extracted['weapons']]) if extracted['weapons'] else 'Aucune'})\n"
         f"• **Grimoire de Sorts** : **{len(extracted['known_spells'])} sorts** ({', '.join([s['name'] for s in extracted['known_spells']]) if extracted['known_spells'] else 'Aucun'})\n"
-        f"• **Compétences Maîtrisées** : {', '.join(extracted['skill_proficiencies']) if extracted['skill_proficiencies'] else 'Standard'}\n"
+        f"• **Compétences Maîtrisées** : {', '.join(extracted['skill_proficiencies']) if extracted['skill_proficiencies'] else 'Standard'}{exp_str}\n"
         f"• **Histoire & RP (Page 2)** : Apparence, Backstory, Alliés, Langues et Trésor importés !"
     )
 

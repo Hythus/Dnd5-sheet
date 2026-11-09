@@ -196,13 +196,26 @@ class CharacterSheet:
     def proficiency_bonus(self) -> int:
         return math.floor((self.total_level - 1) / 4) + 2
 
+    def get_ability_score(self, ability: Ability) -> int:
+        if ability in self.raw_abilities:
+            return self.raw_abilities[ability]
+        for k, v in self.raw_abilities.items():
+            k_name = k.name if hasattr(k, "name") else str(k)
+            if k_name == ability.name or str(k) == ability.value:
+                return v
+        return 10
+
     def get_ability_modifier(self, ability: Ability) -> int:
-        score = self.raw_abilities.get(ability, 10)
+        score = self.get_ability_score(ability)
         return math.floor((score - 10) / 2)
 
     def get_saving_throw(self, ability: Ability) -> int:
         mod = self.get_ability_modifier(ability)
-        if ability in self.saving_throw_proficiencies:
+        is_prof = any(
+            (p == ability or (hasattr(p, "name") and p.name == ability.name))
+            for p in self.saving_throw_proficiencies
+        )
+        if is_prof:
             mod += self.proficiency_bonus
         return mod
 
@@ -402,18 +415,31 @@ class CharacterSheet:
             "pp": int(curr_raw.get("pp", 0)),
         }
 
-        # Inventaire d'objets
-        inventory = [
-            Item(
-                name=it.get("name", "Objet"),
+        # Inventaire d'objets (avec enrichissement LIKE automatique si description absente)
+        inventory = []
+        tr_notes = data.get("treasure_notes", "")
+        app_notes = data.get("appearance", "")
+        for it in data.get("inventory", []):
+            it_name = it.get("name", "Objet")
+            it_w = float(it.get("weight", 0.0))
+            it_d = it.get("description", "")
+            it_c = it.get("category", "Aventurier")
+            if not it_d or it_w == 0.0:
+                db_w, db_d, db_c = db.match_item_in_db(it_name, tr_notes, app_notes)
+                if not it_d and db_d:
+                    it_d = db_d
+                if it_w == 0.0 and db_w > 0.0:
+                    it_w = db_w
+                if it_c == "Aventurier" and db_c:
+                    it_c = db_c
+            inventory.append(Item(
+                name=it_name,
                 quantity=int(it.get("quantity", 1)),
-                category=it.get("category", "Aventurier"),
-                weight=float(it.get("weight", 0.0)),
-                description=it.get("description", ""),
+                category=it_c,
+                weight=it_w,
+                description=it_d,
                 is_equipped=bool(it.get("is_equipped", False))
-            )
-            for it in data.get("inventory", [])
-        ]
+            ))
 
         return cls(
             name=data.get("name", "Héros Sans Nom"),
@@ -519,26 +545,130 @@ def get_default_character() -> CharacterSheet:
 
 def sync_session_state_from_char(c: CharacterSheet):
     """
-    Synchronise toutes les clés de widgets Streamlit (sliders de caractéristiques, bourse, niveaux)
-    avec l'objet CharacterSheet afin d'éviter que les widgets n'écrasent les données nouvellement importées.
+    Incrémente le compteur de version des widgets afin que tous les curseurs de caractéristiques,
+    champs de monnaies, niveaux et armures prennent immédiatement les nouvelles valeurs du personnage
+    sans jamais être écrasés par l'ancien état du navigateur ni lever d'exception Streamlit.
     """
-    for ab in Ability:
-        st.session_state[f"slider_{ab.name}"] = c.raw_abilities.get(ab, 10)
-    for coin_k in ["pc", "pa", "pe", "po", "pp"]:
-        st.session_state[f"curr_{coin_k}"] = c.currency.get(coin_k, 0)
-    # Nettoie et met à jour les clés de classes et sous-classes
-    for k in list(st.session_state.keys()):
-        if k.startswith("lvl_") or k.startswith("sub_"):
-            del st.session_state[k]
-    for cls_n, lvl_v in c.classes.items():
-        st.session_state[f"lvl_{cls_n}"] = lvl_v
-    for cls_n, sub_v in c.subclasses.items():
-        st.session_state[f"sub_{cls_n}"] = sub_v
+    st.session_state["widget_version"] = st.session_state.get("widget_version", 0) + 1
+
+
+def apply_imported_pdf_to_char(char: CharacterSheet, extracted_data: dict):
+    """Applique l'ensemble des données extraites d'un PDF D&D 5e à une instance CharacterSheet."""
+    char.name = extracted_data["name"]
+    char.race = extracted_data["race"]
+    char.player_name = extracted_data.get("player_name", "")
+    char.xp = extracted_data.get("xp", 0)
+    if extracted_data.get("background"):
+        char.background = extracted_data["background"]
+    if extracted_data.get("alignment"):
+        char.alignment = extracted_data["alignment"]
+    if extracted_data.get("classes"):
+        char.classes = extracted_data["classes"]
+    if extracted_data.get("subclasses"):
+        char.subclasses = extracted_data["subclasses"]
+    char.raw_abilities = {}
+    for ab_code, val in extracted_data.get("raw_abilities", {}).items():
+        try:
+            char.raw_abilities[Ability[ab_code]] = int(val)
+        except KeyError:
+            pass
+    char.pv_max = extracted_data["pv_max"]
+    char.pv_current = extracted_data["pv_current"]
+    char.pv_temp = extracted_data.get("pv_temp", 0)
+    char.exhaustion = extracted_data.get("exhaustion", 0)
+    char.speed = extracted_data["speed"]
+    if extracted_data.get("equipped_armor_name") and extracted_data["equipped_armor_name"] in db.ARMORS_DB:
+        arm_n = extracted_data["equipped_armor_name"]
+        arm_d = db.ARMORS_DB[arm_n]
+        t_map = {
+            "Légère": ArmorType.LIGHT,
+            "Intermédiaire": ArmorType.MEDIUM,
+            "Lourde": ArmorType.HEAVY,
+            "Aucune": ArmorType.NONE
+        }
+        char.equipped_armor = Armor(
+            name=arm_n,
+            armor_type=t_map.get(arm_d["type"], ArmorType.NONE),
+            base_ac=arm_d["base_ac"],
+            max_dex_bonus=arm_d["max_dex"]
+        )
+    if extracted_data.get("currency"):
+        char.currency = dict(extracted_data["currency"])
+    if extracted_data.get("inventory"):
+        char.inventory = [
+            Item(
+                name=it["name"],
+                quantity=it.get("quantity", 1),
+                category=it.get("category", "Aventurier"),
+                weight=it.get("weight", 0.0),
+                description=it.get("description", ""),
+                is_equipped=it.get("is_equipped", False)
+            )
+            for it in extracted_data["inventory"]
+        ]
+    if extracted_data.get("saving_throw_proficiencies"):
+        st_profs = []
+        for st_code in extracted_data["saving_throw_proficiencies"]:
+            try:
+                st_profs.append(Ability[st_code])
+            except KeyError:
+                pass
+        if st_profs:
+            char.saving_throw_proficiencies = st_profs
+    if extracted_data.get("skill_proficiencies"):
+        char.skill_proficiencies = list(dict.fromkeys(extracted_data["skill_proficiencies"]))
+    if extracted_data.get("skill_expertises"):
+        char.skill_expertises = list(dict.fromkeys(extracted_data["skill_expertises"]))
+    if extracted_data.get("weapons"):
+        char.weapons = [
+            Weapon(
+                name=w["name"],
+                damage_dice=w.get("damage_dice", "1d8"),
+                damage_type=w.get("damage_type", "tranchant"),
+                is_finesse=w.get("is_finesse", False),
+                is_ranged=w.get("is_ranged", False),
+                magic_bonus=w.get("magic_bonus", 0),
+                attack_bonus_override=w.get("attack_bonus_override"),
+                extra_damage_desc=w.get("extra_damage_desc", "")
+            )
+            for w in extracted_data["weapons"]
+        ]
+    if extracted_data.get("known_spells"):
+        char.known_spells = [
+            Spell(
+                name=s["name"],
+                level=s.get("level", 1),
+                school=s.get("school", "Évocation"),
+                casting_time=s.get("casting_time", "1 action"),
+                range_area=s.get("range_area", "18 m"),
+                duration=s.get("duration", "Instantanée"),
+                concentration=s.get("concentration", False),
+                description=s.get("description", "")
+            )
+            for s in extracted_data["known_spells"]
+        ]
+    if "spell_slots_used" in extracted_data:
+        char.spell_slots_used = extracted_data["spell_slots_used"]
+
+    # Champs RP, Histoire & Apparence (Pages 1 & 2)
+    for rp_key in [
+        "languages_and_proficiencies", "personality_traits", "ideals", "bonds", "flaws",
+        "age", "height", "weight", "eyes", "skin", "hair", "appearance",
+        "allies", "backstory", "treasure_notes", "additional_features_notes"
+    ]:
+        if extracted_data.get(rp_key):
+            setattr(char, rp_key, extracted_data[rp_key])
+
+    # Synchronisation automatique des aptitudes officielles + aptitudes spéciales du PDF
+    base_traits = list(extracted_data.get("traits", []))
+    updated_f, _ = db.sync_character_features(char.classes, char.subclasses, base_traits)
+    char.traits_and_features = updated_f
 
 if "char" not in st.session_state:
     st.session_state.char = get_default_character()
-    sync_session_state_from_char(st.session_state.char)
+    st.session_state["widget_version"] = 0
 
+w_ver: int = st.session_state.get("widget_version", 0)
 char: CharacterSheet = st.session_state.char
 
 # Thème actif selon la classe principale
@@ -726,13 +856,13 @@ with st.sidebar:
                 st.write(f"**{cls_name}**")
             with col_c2:
                 old_lvl = char.classes[cls_name]
-                new_lvl = st.number_input(f"Niv {cls_name}", min_value=1, max_value=20, value=old_lvl, key=f"lvl_{cls_name}", label_visibility="collapsed")
+                new_lvl = st.number_input(f"Niv {cls_name}", min_value=1, max_value=20, value=old_lvl, key=f"lvl_{cls_name}_{w_ver}", label_visibility="collapsed")
                 if new_lvl != old_lvl:
                     char.classes[cls_name] = new_lvl
                     level_changed = True
             with col_c3:
                 if len(char.classes) > 1:
-                    if st.button("❌", key=f"del_{cls_name}", help=f"Retirer la classe {cls_name}"):
+                    if st.button("❌", key=f"del_{cls_name}_{w_ver}", help=f"Retirer la classe {cls_name}"):
                         del char.classes[cls_name]
                         if cls_name in char.subclasses:
                             del char.subclasses[cls_name]
@@ -749,7 +879,7 @@ with st.sidebar:
             else:
                 current_sub = char.subclasses.get(cls_name, available_subs[0] if available_subs else "Aucune")
                 sub_idx = available_subs.index(current_sub) if current_sub in available_subs else 0
-                selected_sub = st.selectbox(f"Sous-classe ({cls_name})", available_subs, index=sub_idx, key=f"sub_{cls_name}")
+                selected_sub = st.selectbox(f"Sous-classe ({cls_name})", available_subs, index=sub_idx, key=f"sub_{cls_name}_{w_ver}")
                 if selected_sub != current_sub:
                     char.subclasses[cls_name] = selected_sub
                     level_changed = True
@@ -758,18 +888,41 @@ with st.sidebar:
         if level_changed:
             updated_feats, added_feats = db.sync_character_features(char.classes, char.subclasses, char.traits_and_features)
             char.traits_and_features = updated_feats
-            if added_feats:
-                st.session_state["toast_msg"] = f"🎉 Niveau supérieur ! Nouvelles aptitudes débloquées : {', '.join(added_feats)}"
+            max_exp_now = db.get_max_expertises_count(char.classes)
+            exp_notice = f" | ⭐ Vous avez droit à {max_exp_now} Expertises de compétences !" if max_exp_now > len(char.skill_expertises) else ""
+            if added_feats or exp_notice:
+                st.session_state["toast_msg"] = f"🎉 Niveau mis à jour ! {('Nouvelles aptitudes : ' + ', '.join(added_feats)) if added_feats else ''}{exp_notice}"
             st.rerun()
 
         # Affichage de la notification si présente
         if "toast_msg" in st.session_state:
             st.toast(st.session_state.pop("toast_msg"))
 
+        # Sélecteur direct des Expertises de Classe (Roublard Niv 1/6, Barde Niv 3/10)
+        max_exp_allowed = db.get_max_expertises_count(char.classes)
+        if max_exp_allowed > 0:
+            st.markdown(f"**⭐ Expertises de Classe ({len(char.skill_expertises)} / {max_exp_allowed})**")
+            st.caption(f"Double votre bonus de maîtrise (+{char.proficiency_bonus * 2} au lieu de +{char.proficiency_bonus}) sur {max_exp_allowed} compétences :")
+            candidate_skills = char.skill_proficiencies if char.skill_proficiencies else list(SKILL_ABILITY_MAP.keys())
+            all_opts = list(dict.fromkeys(candidate_skills + char.skill_expertises + list(SKILL_ABILITY_MAP.keys())))
+            chosen_exps = st.multiselect(
+                "Compétences avec Expertise (x2)",
+                options=all_opts,
+                default=[s for s in char.skill_expertises if s in all_opts],
+                max_selections=max(max_exp_allowed, len(char.skill_expertises), 4),
+                key=f"sidebar_exp_{w_ver}"
+            )
+            if chosen_exps != char.skill_expertises:
+                char.skill_expertises = chosen_exps
+                for sk_e in chosen_exps:
+                    if sk_e not in char.skill_proficiencies:
+                        char.skill_proficiencies.append(sk_e)
+                st.rerun()
+
         # Ajouter une nouvelle classe
         new_classes_avail = [c for c in db.CLASSES_DND.keys() if c not in char.classes]
         if new_classes_avail:
-            new_cls = st.selectbox("Ajouter une classe", ["-- Sélectionner --"] + new_classes_avail)
+            new_cls = st.selectbox("Ajouter une classe", ["-- Sélectionner --"] + new_classes_avail, key=f"new_cls_{w_ver}")
             if new_cls != "-- Sélectionner --":
                 if st.button(f"Emprunter la voie du {new_cls}"):
                     char.classes[new_cls] = 1
@@ -800,22 +953,24 @@ with st.sidebar:
     with tab_stats:
         st.subheader("Caractéristiques Brutes")
         for ab in Ability:
-            char.raw_abilities[ab] = st.slider(
+            current_ab_score = char.get_ability_score(ab)
+            new_ab_score = st.slider(
                 f"{ab.value} ({ab.name})",
                 min_value=1,
                 max_value=30,
-                value=char.raw_abilities.get(ab, 10),
-                key=f"slider_{ab.name}"
+                value=current_ab_score,
+                key=f"slider_{ab.name}_{w_ver}"
             )
+            char.raw_abilities[ab] = new_ab_score
         st.divider()
         st.subheader("Vitesse & Équipement")
-        char.speed = st.number_input("Vitesse (mètres)", min_value=1, max_value=30, value=char.speed)
+        char.speed = st.number_input("Vitesse (mètres)", min_value=1, max_value=30, value=char.speed, key=f"speed_in_{w_ver}")
         
         # Armure équipée
         armors_keys = list(db.ARMORS_DB.keys())
         current_armor_name = char.equipped_armor.name if char.equipped_armor else armors_keys[0]
         arm_idx = armors_keys.index(current_armor_name) if current_armor_name in armors_keys else 0
-        chosen_armor_name = st.selectbox("Armure équipée", armors_keys, index=arm_idx)
+        chosen_armor_name = st.selectbox("Armure équipée", armors_keys, index=arm_idx, key=f"armor_sel_{w_ver}")
         arm_info = db.ARMORS_DB[chosen_armor_name]
         
         # Mapping ArmorType
@@ -832,7 +987,7 @@ with st.sidebar:
             max_dex_bonus=arm_info["max_dex"]
         )
 
-        porte_bouclier = st.checkbox("Porter un Bouclier (+2 CA)", value=(char.equipped_shield is not None))
+        porte_bouclier = st.checkbox("Porter un Bouclier (+2 CA)", value=(char.equipped_shield is not None), key=f"shield_chk_{w_ver}")
         char.equipped_shield = Armor(name="Bouclier", armor_type=ArmorType.SHIELD, base_ac=2) if porte_bouclier else None
 
     with tab_import:
@@ -857,112 +1012,7 @@ with st.sidebar:
                     extracted_data, summary = parse_pdf_character(bytes_data)
                     st.info(summary)
                     if st.button("Appliquer les données du PDF à la fiche"):
-                        char.name = extracted_data["name"]
-                        char.race = extracted_data["race"]
-                        char.player_name = extracted_data.get("player_name", "")
-                        char.xp = extracted_data.get("xp", 0)
-                        if extracted_data.get("background"):
-                            char.background = extracted_data["background"]
-                        if extracted_data.get("alignment"):
-                            char.alignment = extracted_data["alignment"]
-                        if extracted_data.get("classes"):
-                            char.classes = extracted_data["classes"]
-                        if extracted_data.get("subclasses"):
-                            char.subclasses = extracted_data["subclasses"]
-                        for ab_code, val in extracted_data.get("raw_abilities", {}).items():
-                            try:
-                                char.raw_abilities[Ability[ab_code]] = val
-                            except KeyError:
-                                pass
-                        char.pv_max = extracted_data["pv_max"]
-                        char.pv_current = extracted_data["pv_current"]
-                        char.pv_temp = extracted_data.get("pv_temp", 0)
-                        char.exhaustion = extracted_data.get("exhaustion", 0)
-                        char.speed = extracted_data["speed"]
-                        if extracted_data.get("equipped_armor_name") and extracted_data["equipped_armor_name"] in db.ARMORS_DB:
-                            arm_n = extracted_data["equipped_armor_name"]
-                            arm_d = db.ARMORS_DB[arm_n]
-                            t_map = {
-                                "Légère": ArmorType.LIGHT,
-                                "Intermédiaire": ArmorType.MEDIUM,
-                                "Lourde": ArmorType.HEAVY,
-                                "Aucune": ArmorType.NONE
-                            }
-                            char.equipped_armor = Armor(
-                                name=arm_n,
-                                armor_type=t_map.get(arm_d["type"], ArmorType.NONE),
-                                base_ac=arm_d["base_ac"],
-                                max_dex_bonus=arm_d["max_dex"]
-                            )
-                        if extracted_data.get("currency"):
-                            char.currency = extracted_data["currency"]
-                        if extracted_data.get("inventory"):
-                            char.inventory = [
-                                Item(
-                                    name=it["name"],
-                                    quantity=it.get("quantity", 1),
-                                    category=it.get("category", "Aventurier"),
-                                    weight=it.get("weight", 0.0),
-                                    description=it.get("description", ""),
-                                    is_equipped=it.get("is_equipped", False)
-                                )
-                                for it in extracted_data["inventory"]
-                            ]
-                        if extracted_data.get("saving_throw_proficiencies"):
-                            st_profs = []
-                            for st_code in extracted_data["saving_throw_proficiencies"]:
-                                try:
-                                    st_profs.append(Ability[st_code])
-                                except KeyError:
-                                    pass
-                            if st_profs:
-                                char.saving_throw_proficiencies = st_profs
-                        if extracted_data.get("skill_proficiencies"):
-                            char.skill_proficiencies = list(set(extracted_data["skill_proficiencies"]))
-                        if extracted_data.get("weapons"):
-                            char.weapons = [
-                                Weapon(
-                                    name=w["name"],
-                                    damage_dice=w.get("damage_dice", "1d8"),
-                                    damage_type=w.get("damage_type", "tranchant"),
-                                    is_finesse=w.get("is_finesse", False),
-                                    is_ranged=w.get("is_ranged", False),
-                                    magic_bonus=w.get("magic_bonus", 0),
-                                    attack_bonus_override=w.get("attack_bonus_override"),
-                                    extra_damage_desc=w.get("extra_damage_desc", "")
-                                )
-                                for w in extracted_data["weapons"]
-                            ]
-                        if extracted_data.get("known_spells"):
-                            char.known_spells = [
-                                Spell(
-                                    name=s["name"],
-                                    level=s.get("level", 1),
-                                    school=s.get("school", "Évocation"),
-                                    casting_time=s.get("casting_time", "1 action"),
-                                    range_area=s.get("range_area", "18 m"),
-                                    duration=s.get("duration", "Instantanée"),
-                                    concentration=s.get("concentration", False),
-                                    description=s.get("description", "")
-                                )
-                                for s in extracted_data["known_spells"]
-                            ]
-                        if "spell_slots_used" in extracted_data:
-                            char.spell_slots_used = extracted_data["spell_slots_used"]
-                        
-                        # Champs RP, Histoire & Apparence (Pages 1 & 2)
-                        for rp_key in [
-                            "languages_and_proficiencies", "personality_traits", "ideals", "bonds", "flaws",
-                            "age", "height", "weight", "eyes", "skin", "hair", "appearance",
-                            "allies", "backstory", "treasure_notes", "additional_features_notes"
-                        ]:
-                            if extracted_data.get(rp_key):
-                                setattr(char, rp_key, extracted_data[rp_key])
-
-                        # Synchronisation automatique des aptitudes officielles + aptitudes spéciales du PDF
-                        base_traits = list(extracted_data.get("traits", []))
-                        updated_f, _ = db.sync_character_features(char.classes, char.subclasses, base_traits)
-                        char.traits_and_features = updated_f
+                        apply_imported_pdf_to_char(char, extracted_data)
                         sync_session_state_from_char(char)
                         st.success("Données du PDF injectées avec succès !")
                         st.rerun()
@@ -1014,7 +1064,7 @@ st.markdown(f"""
 
 cols_stats = st.columns(6)
 for i, ab in enumerate(Ability):
-    score = char.raw_abilities.get(ab, 10)
+    score = char.get_ability_score(ab)
     mod = char.get_ability_modifier(ab)
     sign = f"+{mod}" if mod >= 0 else f"{mod}"
     with cols_stats[i]:
@@ -1056,9 +1106,7 @@ with col_m6:
 st.write("")
 
 # Panneau Vital : PV, Dégâts, Soins, Repos Long & Court
-with st.container():
-    st.markdown("""<div class="hp-container">""", unsafe_allow_html=True)
-    
+with st.container(border=True):
     col_hp_actions, col_rests, col_death = st.columns([4, 4, 3])
 
     # 1. Action sur les PV (Dégâts / Soins / PV Temporaires)
@@ -1150,7 +1198,8 @@ with st.container():
             "🥵 Niveau d'Épuisement (0 à 6)",
             options=[0, 1, 2, 3, 4, 5, 6],
             index=min(6, max(0, char.exhaustion)),
-            format_func=lambda x: f"Niveau {x} — {db.EXHAUSTION_EFFECTS.get(x, '')}"
+            format_func=lambda x: db.EXHAUSTION_EFFECTS.get(x, f"Niveau {x}") if x > 0 else "Niveau 0 : Aucun effet d'épuisement",
+            key=f"exh_sel_{w_ver}"
         )
         if new_exh != char.exhaustion:
             char.exhaustion = new_exh
@@ -1238,8 +1287,6 @@ with st.container():
             char.death_saves = {"successes": 0, "failures": 0}
             st.rerun()
 
-    st.markdown("""</div>""", unsafe_allow_html=True)
-
 st.divider()
 
 # ==============================================================================
@@ -1324,36 +1371,45 @@ with tab_inv:
     st.markdown("#### 🪙 Bourse & Trésor")
     st.caption("Règles officielles de change : 1 PP = 10 PO | 1 PO = 2 PE = 10 PA = 100 PC")
     
-    col_v1, col_v2 = st.columns([2, 5])
+    col_v1, col_v2, col_v3 = st.columns([2, 2, 3])
     with col_v1:
-        st.metric("💰 Valeur Totale Estimée", f"{char.total_currency_po:,.2f} PO".replace(",", " "))
+        st.metric("💰 Solde Monnaies (en PO)", f"{char.total_currency_po:,.2f} PO".replace(",", " "))
     with col_v2:
-        st.caption("Charge totale de l'équipement :")
-        st.write(f"⚖️ **{char.total_inventory_weight} kg** transportés dans le sac")
+        # Calcul de la valeur estimée des gemmes dans l'inventaire (ex: '10 Gemmes (150PO/gemme)')
+        import re as _re
+        gems_po = 0
+        for it_g in char.inventory:
+            m_g = _re.search(r"(\d+)\s*po", it_g.name, _re.IGNORECASE)
+            if m_g and ("gemme" in it_g.name.lower() or it_g.category == "Trésor / Gemme"):
+                gems_po += int(m_g.group(1)) * it_g.quantity
+        st.metric("💎 Gemmes & Joyaux en Sac", f"{gems_po:,.0f} PO".replace(",", " ") if gems_po > 0 else "0 PO")
+    with col_v3:
+        st.caption("Patrimoine total (Pièces + Gemmes) & Poids :")
+        st.write(f"👑 **Total : {(char.total_currency_po + gems_po):,.2f} PO** | ⚖️ **{char.total_inventory_weight} kg** transportés".replace(",", " "))
 
     col_pc, col_pa, col_pe, col_po, col_pp = st.columns(5)
     with col_pc:
-        new_pc = st.number_input("🪙 Cuivre (PC)", min_value=0, max_value=100000, value=char.currency.get("pc", 0), step=1, key="curr_pc")
+        new_pc = st.number_input("🪙 Cuivre (PC)", min_value=0, max_value=100000, value=char.currency.get("pc", 0), step=1, key=f"curr_pc_{w_ver}")
         if new_pc != char.currency.get("pc", 0):
             char.currency["pc"] = new_pc
             st.rerun()
     with col_pa:
-        new_pa = st.number_input("🥈 Argent (PA)", min_value=0, max_value=100000, value=char.currency.get("pa", 0), step=1, key="curr_pa")
+        new_pa = st.number_input("🥈 Argent (PA)", min_value=0, max_value=100000, value=char.currency.get("pa", 0), step=1, key=f"curr_pa_{w_ver}")
         if new_pa != char.currency.get("pa", 0):
             char.currency["pa"] = new_pa
             st.rerun()
     with col_pe:
-        new_pe = st.number_input("⚡ Électrum (PE)", min_value=0, max_value=100000, value=char.currency.get("pe", 0), step=1, key="curr_pe")
+        new_pe = st.number_input("⚡ Électrum (PE)", min_value=0, max_value=100000, value=char.currency.get("pe", 0), step=1, key=f"curr_pe_{w_ver}")
         if new_pe != char.currency.get("pe", 0):
             char.currency["pe"] = new_pe
             st.rerun()
     with col_po:
-        new_po = st.number_input("💰 Or (PO)", min_value=0, max_value=100000, value=char.currency.get("po", 0), step=1, key="curr_po")
+        new_po = st.number_input("💰 Or (PO)", min_value=0, max_value=100000, value=char.currency.get("po", 0), step=1, key=f"curr_po_{w_ver}")
         if new_po != char.currency.get("po", 0):
             char.currency["po"] = new_po
             st.rerun()
     with col_pp:
-        new_pp = st.number_input("💎 Platine (PP)", min_value=0, max_value=100000, value=char.currency.get("pp", 0), step=1, key="curr_pp")
+        new_pp = st.number_input("💎 Platine (PP)", min_value=0, max_value=100000, value=char.currency.get("pp", 0), step=1, key=f"curr_pp_{w_ver}")
         if new_pp != char.currency.get("pp", 0):
             char.currency["pp"] = new_pp
             st.rerun()
@@ -1806,30 +1862,33 @@ with tab_skills:
         df_skills = pd.DataFrame(data_skills)
         st.dataframe(df_skills, hide_index=True, use_container_width=True, height=520)
 
-        with st.expander("⚙️ Modifier mes Compétences Maîtrisées & Expertises"):
+        max_exp_tab = db.get_max_expertises_count(char.classes)
+        exp_label_info = f" (Droit de classe : {max_exp_tab} Expertises)" if max_exp_tab > 0 else ""
+        with st.expander(f"⚙️ Modifier mes Compétences Maîtrisées & Expertises{exp_label_info}", expanded=True):
             all_skill_names = list(SKILL_ABILITY_MAP.keys())
             new_profs = st.multiselect(
-                "Compétences maîtrisées (+Bonus de maîtrise)",
+                f"Compétences maîtrisées (+{char.proficiency_bonus})",
                 options=all_skill_names,
                 default=[s for s in char.skill_proficiencies if s in all_skill_names],
-                key="edit_skill_profs"
+                key=f"edit_skill_profs_{w_ver}"
             )
             new_exps = st.multiselect(
-                "Expertises (+Double bonus de maîtrise)",
+                f"⭐ Expertises (+{char.proficiency_bonus * 2} au lieu de +{char.proficiency_bonus}){exp_label_info}",
                 options=all_skill_names,
                 default=[s for s in char.skill_expertises if s in all_skill_names],
-                key="edit_skill_exps"
+                key=f"edit_skill_exps_{w_ver}"
             )
-            if st.button("Enregistrer les compétences", key="btn_save_skills"):
-                char.skill_proficiencies = new_profs
+            if st.button("Enregistrer les compétences & expertises", key="btn_save_skills"):
+                char.skill_proficiencies = list(dict.fromkeys(new_profs + new_exps))
                 char.skill_expertises = new_exps
+                sync_session_state_from_char(char)
                 st.rerun()
 
     with col_sk_right:
         st.markdown("#### 🛡️ Jets de Sauvegarde")
         for ab in Ability:
             st_mod = char.get_saving_throw(ab)
-            is_prof = ab in char.saving_throw_proficiencies
+            is_prof = any((p == ab or (hasattr(p, "name") and p.name == ab.name)) for p in char.saving_throw_proficiencies)
             mark = "🛡️ **Maîtrisé**" if is_prof else "—"
             st_val = f"+{st_mod}" if st_mod >= 0 else f"{st_mod}"
             st.markdown(f"""
@@ -1841,15 +1900,17 @@ with tab_skills:
 
         with st.expander("⚙️ Modifier les Jets de Sauvegarde Maîtrisés"):
             all_abs = list(Ability)
+            default_abs = [a for a in all_abs if any((p == a or (hasattr(p, "name") and p.name == a.name)) for p in char.saving_throw_proficiencies)]
             new_st = st.multiselect(
                 "Sauvegardes maîtrisées",
                 options=all_abs,
-                default=char.saving_throw_proficiencies,
+                default=default_abs,
                 format_func=lambda a: f"{a.value} ({a.name})",
-                key="edit_save_profs"
+                key=f"edit_save_profs_{w_ver}"
             )
             if st.button("Enregistrer les sauvegardes", key="btn_save_st"):
                 char.saving_throw_proficiencies = new_st
+                sync_session_state_from_char(char)
                 st.rerun()
 
         st.divider()
