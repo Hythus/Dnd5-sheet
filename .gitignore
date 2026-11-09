@@ -1,0 +1,25 @@
+# Environnements virtuels
+.venv/
+venv/
+ENV/
+env/
+
+# Byte-code et caches Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.log
+
+# Caches applicatifs & Streamlit
+.streamlit/
+cache_meteo/
+data_brutes/
+
+# Fichiers système & IDE
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+*.tmp
+
