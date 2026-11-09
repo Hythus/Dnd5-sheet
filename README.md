@@ -1,6 +1,6 @@
 # 🐉 Chronique du Héros — Fiche de Personnage D&D 5e Interactive
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://share.streamlit.io)
+[![Ouvrir l'application Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://dnd5-sheet.streamlit.app)
 [![D&D 5e SRD](https://img.shields.io/badge/Règles-D%26D%205e%20Officiel%20FR-8b0000.svg)](https://dnd.wizards.com)
 [![Python](https://img.shields.io/badge/Python-3.13-blue.svg)](https://python.org)
 
@@ -8,19 +8,26 @@ Application Web interactive motorisée par **Streamlit** et les règles officiel
 
 ---
 
-## 🌐 Déploiement en 1 Clic (Accès Web Public sans code)
+## 🚀 Accès Direct à la Fiche en Ligne
 
-Pour que n'importe quel joueur puisse ouvrir la fiche directement dans son navigateur sans installer Python ni exécuter de code :
+N'importe quel joueur peut utiliser cette fiche directement dans son navigateur web, **sans rien installer, sans compte et sans exécuter de code** :
 
-1. Rendez-vous sur **[share.streamlit.io](https://share.streamlit.io)** et connectez-vous avec votre compte **GitHub**.
+👉 **[Cliquez ici pour ouvrir la Fiche Interactive (dnd5-sheet.streamlit.app)](https://dnd5-sheet.streamlit.app)**
+
+> 💡 **Prêt à l'emploi** : Le lien ouvre instantanément une fiche vierge interactive que vous pouvez remplir, sauvegarder en JSON, ou préremplir en important un PDF de personnage D&D 5e officiel.
+
+<details>
+<summary>🔧 <i>Pour les développeurs : Déployer votre propre instance sur Streamlit Cloud</i></summary>
+
+Si vous avez forké ce dépôt et souhaitez héberger votre propre copie :
+1. Rendez-vous sur [share.streamlit.io](https://share.streamlit.io) et connectez-vous avec GitHub.
 2. Cliquez sur **« New app »**.
 3. Renseignez :
-   - **Repository** : `<votre-pseudo>/Dnd-5-sheet`
+   - **Repository** : `<votre-pseudo>/Dnd5-sheet`
    - **Branch** : `main`
    - **Main file path** : `app_dnd.py`
 4. Cliquez sur **« Deploy! »**.
-
-Votre application sera instantanément en ligne avec une URL publique permanente (ex: `https://dnd-5-sheet.streamlit.app`). Il suffira de cliquer dessus pour ouvrir une fiche perso vierge interactive !
+</details>
 
 ---
 

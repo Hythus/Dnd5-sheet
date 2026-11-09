@@ -15,6 +15,10 @@ __pycache__/
 cache_meteo/
 data_brutes/
 
+# Sauvegardes de personnages personnelles (gardées uniquement en local)
+*.json
+!example_*.json
+
 # Fichiers système & IDE
 .vscode/
 .idea/
