@@ -27,9 +27,11 @@ from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field, asdict
 from enum import Enum
 
-import dnd_database as db
 import importlib
+import dnd_database as db
 importlib.reload(db)
+import dnd_importer
+importlib.reload(dnd_importer)
 from dnd_importer import parse_pdf_character, parse_json_character
 
 # ==============================================================================
@@ -801,8 +803,17 @@ with st.sidebar:
                                 )
                                 for it in extracted_data["inventory"]
                             ]
+                        if extracted_data.get("saving_throw_proficiencies"):
+                            st_profs = []
+                            for st_code in extracted_data["saving_throw_proficiencies"]:
+                                try:
+                                    st_profs.append(Ability[st_code])
+                                except KeyError:
+                                    pass
+                            if st_profs:
+                                char.saving_throw_proficiencies = st_profs
                         if extracted_data.get("skill_proficiencies"):
-                            char.skill_proficiencies = list(set(char.skill_proficiencies + extracted_data["skill_proficiencies"]))
+                            char.skill_proficiencies = list(set(extracted_data["skill_proficiencies"]))
                         if extracted_data.get("weapons"):
                             char.weapons = [
                                 Weapon(

@@ -38,7 +38,7 @@ CLASS_SYNONYMS = {
 
 SKILL_TRANSLATION = {
     "acrobatics": "Acrobaties", "acrobatie": "Acrobaties", "acrobaties": "Acrobaties",
-    "animal handling": "Dressage", "animal": "Dressage", "dressage": "Dressage",
+    "animalhandling": "Dressage", "animal": "Dressage", "dressage": "Dressage",
     "arcana": "Arcanes", "arcanes": "Arcanes",
     "athletics": "Athlétisme", "athletisme": "Athlétisme",
     "deception": "Tromperie", "tromperie": "Tromperie",
@@ -52,7 +52,7 @@ SKILL_TRANSLATION = {
     "performance": "Représentation", "representation": "Représentation",
     "persuasion": "Persuasion",
     "religion": "Religion",
-    "sleight of hand": "Escamotage", "sleightofhand": "Escamotage", "escamotage": "Escamotage",
+    "sleightofhand": "Escamotage", "escamotage": "Escamotage",
     "stealth": "Discrétion", "discretion": "Discrétion",
     "survival": "Survie", "survie": "Survie"
 }
@@ -85,11 +85,36 @@ def normalize_key(k: str) -> str:
     """Normalise un nom de champ pour correspondance souple."""
     return re.sub(r"[^a-zA-Z0-9]", "", k.lower())
 
-def extract_acroform_fields(pdf_obj: pdfplumber.PDF) -> Dict[str, str]:
-    """Extrait l'ensemble des champs AcroForm et annotations sans écraser les valeurs valides."""
-    fields: Dict[str, str] = {}
-    
-    # 1. Via le catalogue AcroForm
+def extract_acroform_entries(pdf_obj: pdfplumber.PDF) -> List[Tuple[str, str]]:
+    """
+    Extrait l'ensemble des paires (nom_champ, valeur) du formulaire AcroForm et des annotations.
+    Conserve une liste complète afin de ne jamais perdre une valeur en cas d'homonymie (ex: 'STR' et 'STR ').
+    """
+    entries: List[Tuple[str, str]] = []
+    seen_pairs = set()
+
+    def add_entry(k: str, v: str):
+        k_clean = k.strip()
+        v_clean = v.strip()
+        if k_clean and v_clean and (k_clean, v_clean) not in seen_pairs:
+            seen_pairs.add((k_clean, v_clean))
+            entries.append((k_clean, v_clean))
+
+    # 1. Via les annotations de chaque page (dans l'ordre des pages 1, 2, 3...)
+    for page in pdf_obj.pages:
+        if hasattr(page, "annots") and page.annots:
+            for annot in page.annots:
+                data = annot.get("data", {})
+                if not isinstance(data, dict):
+                    continue
+                f_name = data.get("T") or annot.get("name")
+                f_val = data.get("V") or annot.get("contents")
+                if f_name is not None and f_val is not None:
+                    name_str = decode_pdf_str(pdftypes.resolve1(f_name))
+                    val_str = decode_pdf_str(pdftypes.resolve1(f_val))
+                    add_entry(name_str, val_str)
+
+    # 2. Via le catalogue AcroForm (complément)
     doc = getattr(pdf_obj, "doc", None)
     if doc and hasattr(doc, "catalog") and "AcroForm" in doc.catalog:
         try:
@@ -110,9 +135,9 @@ def extract_acroform_fields(pdf_obj: pdfplumber.PDF) -> Dict[str, str]:
                         full_name = f"{prefix}.{name_str}" if prefix else name_str
                     
                     if val_raw is not None:
-                        val_str = decode_pdf_str(pdftypes.resolve1(val_raw)).strip()
-                        if full_name and val_str and (full_name not in fields or len(val_str) > len(fields[full_name])):
-                            fields[full_name] = val_str
+                        val_str = decode_pdf_str(pdftypes.resolve1(val_raw))
+                        if full_name and val_str:
+                            add_entry(full_name, val_str)
                     
                     if "Kids" in resolved:
                         kids = pdftypes.resolve1(resolved["Kids"])
@@ -126,22 +151,7 @@ def extract_acroform_fields(pdf_obj: pdfplumber.PDF) -> Dict[str, str]:
         except Exception:
             pass
 
-    # 2. Via les annotations de chaque page
-    for page in pdf_obj.pages:
-        if hasattr(page, "annots") and page.annots:
-            for annot in page.annots:
-                data = annot.get("data", {})
-                if not isinstance(data, dict):
-                    continue
-                f_name = data.get("T") or annot.get("name")
-                f_val = data.get("V") or annot.get("contents")
-                if f_name:
-                    name_str = decode_pdf_str(pdftypes.resolve1(f_name)).strip()
-                    val_str = decode_pdf_str(pdftypes.resolve1(f_val)).strip()
-                    if name_str and val_str and name_str not in fields:
-                        fields[name_str] = val_str
-
-    return fields
+    return entries
 
 def parse_class_field_advanced(cand: str) -> Tuple[Dict[str, int], Dict[str, str]]:
     """Parse une ligne complexe de multiclassage et sous-classes."""
@@ -171,18 +181,17 @@ def parse_class_field_advanced(cand: str) -> Tuple[Dict[str, int], Dict[str, str
         
         # Sous-classe
         clean_sub = re.sub(
-            rf"\b(?:rôdeur|rodeur|roublard|guerrier|paladin|barde|barbare|clerc|druide|magicien|ensorceleur|moine|occultiste|artificier)\b",
+            rf"\b(?:rôdeur|rodeur|rdeur|roublard|guerrier|paladin|barde|barbare|clerc|druide|magicien|ensorceleur|moine|occultiste|artificier)\b",
             "",
             part_clean,
             flags=re.IGNORECASE
         )
         clean_sub = re.sub(r"(?:niv(?:eau)?\.?|level|lvl\.?)\s*\d{1,2}", "", clean_sub, flags=re.IGNORECASE).strip(" -/&(),.")
         if len(clean_sub) >= 3:
-            # Recherche de correspondance dans le catalogue officiel
             matched_official = None
             if found_cls in db.CLASSES_DND:
                 for off_sub in db.CLASSES_DND[found_cls]["subclasses"]:
-                    if clean_sub.lower() in off_sub.lower():
+                    if clean_sub.lower() in off_sub.lower() or "chasseur de monstre" in clean_sub.lower() and "chasseur de monstres" in off_sub.lower():
                         matched_official = off_sub
                         break
             subclasses[found_cls] = matched_official if matched_official else clean_sub
@@ -198,7 +207,6 @@ def parse_items_from_text(equip_text: str) -> List[Dict[str, Any]]:
         if not clean or len(clean) < 2:
             continue
         
-        # Ignorer les lignes de devises isolées
         if re.match(r"^(?:po|pa|pc|pe|pp|gp|sp|cp|ep)\s*:\s*\d+", clean, re.IGNORECASE):
             continue
 
@@ -217,12 +225,10 @@ def parse_items_from_text(equip_text: str) -> List[Dict[str, Any]]:
                 qty = int(m_pre.group(1))
                 name = m_pre.group(2).strip()
 
-        # Nettoyage supplémentaire
         name = name.strip(" -:•")
         if not name:
             continue
 
-        # Détermination de la catégorie
         cat = "Aventurier"
         n_low = name.lower()
         if any(x in n_low for x in ["potion", "philtre", "antidote"]):
@@ -238,7 +244,6 @@ def parse_items_from_text(equip_text: str) -> List[Dict[str, Any]]:
         elif any(x in n_low for x in ["gemme", "or", "diamant", "rubis", "lingot", "perle"]):
             cat = "Trésor / Gemme"
 
-        # Recherche de poids standard dans db.ITEMS_DB si existant
         weight = 0.0
         desc = ""
         for it_db_name, it_db_val in db.ITEMS_DB.items():
@@ -253,7 +258,7 @@ def parse_items_from_text(equip_text: str) -> List[Dict[str, Any]]:
             "category": cat,
             "weight": weight,
             "description": desc,
-            "is_equipped": (cat in ["Vêtements", "Objet magique"] and "armure" in name.lower())
+            "is_equipped": (cat in ["Vêtements", "Objet magique"] and ("armure" in n_low or "cape" in n_low or "anneau" in n_low or "broche" in n_low))
         })
     return items
 
@@ -291,52 +296,67 @@ def parse_pdf_character(file_bytes: bytes) -> Tuple[Dict[str, Any], str]:
     }
     
     with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
-        form_data = extract_acroform_fields(pdf)
+        entries = extract_acroform_entries(pdf)
         
-        # Champs normalisés
-        norm_fields: Dict[str, Tuple[str, str]] = {}
-        for raw_k, raw_v in form_data.items():
+        # Dictionnaire multi-valeurs par clé normalisée (ne perd jamais une valeur si 'STR' et 'STR ' coexistent)
+        norm_multi: Dict[str, List[str]] = {}
+        for raw_k, raw_v in entries:
             k_norm = normalize_key(raw_k)
-            norm_fields[k_norm] = (raw_k, raw_v)
+            norm_multi.setdefault(k_norm, []).append(raw_v)
 
-        def get_field_val(patterns: List[str], exact: bool = False) -> Optional[str]:
+        def get_first_val(patterns: List[str], exact: bool = False) -> Optional[str]:
             for pat in patterns:
                 pat_norm = normalize_key(pat)
                 if exact:
-                    if pat_norm in norm_fields:
-                        return norm_fields[pat_norm][1]
+                    if pat_norm in norm_multi and norm_multi[pat_norm]:
+                        return norm_multi[pat_norm][0]
                 else:
-                    for k_norm, (_, v) in norm_fields.items():
-                        if pat_norm in k_norm:
-                            return v
+                    for k_norm, vals in norm_multi.items():
+                        if pat_norm in k_norm and vals:
+                            return vals[0]
             return None
 
-        # 1. Identité (Nom, Race, Historique, Alignement)
-        nom = get_field_val(["charactername", "character_name", "nomdupersonnage", "nom"], exact=True)
+        def get_all_vals(patterns: List[str], exact: bool = False) -> List[str]:
+            res = []
+            for pat in patterns:
+                pat_norm = normalize_key(pat)
+                if exact:
+                    res.extend(norm_multi.get(pat_norm, []))
+                else:
+                    for k_norm, vals in norm_multi.items():
+                        if pat_norm in k_norm:
+                            res.extend(vals)
+            return res
+
+        # 1. Identité (Nom, Race, Historique, Alignement) - priorité au champ de la page 1
+        nom = get_first_val(["charactername", "character_name", "nomdupersonnage", "nom"], exact=True)
         if not nom:
-            nom = get_field_val(["charactername", "nomdupersonnage", "nom"])
+            nom = get_first_val(["charactername", "nomdupersonnage"])
         if nom:
-            # Correction "Feuille d'Agent" -> "Feuille d'Argent" si coquille de saisie
             if "feuille d'agent" in nom.lower():
                 nom = re.sub(r"feuille d'agent", "Feuille d'Argent", nom, flags=re.IGNORECASE)
             extracted["name"] = nom
 
-        race = get_field_val(["race", "species", "peuple"], exact=True)
-        if not race: race = get_field_val(["race", "peuple"])
+        race = get_first_val(["race", "species", "peuple"], exact=True)
+        if not race: race = get_first_val(["race", "peuple"])
         if race: extracted["race"] = race
 
-        bg = get_field_val(["background", "historique"], exact=True)
-        if not bg: bg = get_field_val(["background", "historique"])
+        bg = get_first_val(["background", "historique"], exact=True)
+        if not bg: bg = get_first_val(["background", "historique"])
         if bg: extracted["background"] = bg
 
-        al = get_field_val(["alignment", "alignement"], exact=True)
-        if not al: al = get_field_val(["alignment", "alignement"])
+        al = get_first_val(["alignment", "alignement"], exact=True)
+        if not al: al = get_first_val(["alignment", "alignement"])
         if al: extracted["alignment"] = al
 
         # 2. Classe, Sous-classe & Niveau (Multiclassage)
-        class_cand = get_field_val(["classlevel", "class", "classe"], exact=True)
+        class_cand = get_first_val(["classlevel", "classeetniveau", "class", "classe"], exact=True)
         if not class_cand:
-            class_cand = get_field_val(["classlevel", "classeetniveau", "class"])
+            # Évite 'spellcastingclass'
+            for k_norm, vals in norm_multi.items():
+                if ("classlevel" in k_norm or k_norm in ["class", "classe"]) and "spell" not in k_norm:
+                    class_cand = vals[0]
+                    break
         
         if class_cand:
             cls_map, sub_map = parse_class_field_advanced(class_cand)
@@ -346,109 +366,171 @@ def parse_pdf_character(file_bytes: bytes) -> Tuple[Dict[str, Any], str]:
                 extracted["subclasses"] = sub_map
 
         # 3. Caractéristiques Brutes (STR, DEX, CON, INT, WIS, CHA)
-        # Recherche prioritaire : valeur de score (10 à 30) plutôt que modificateur (-5 à +5)
-        stat_codes = [
-            ("STR", ["str", "strength", "force", "for"]),
-            ("DEX", ["dex", "dexterity", "dexterite", "dextérité"]),
-            ("CON", ["con", "constitution"]),
-            ("INT", ["int", "intelligence"]),
-            ("WIS", ["wis", "wisdom", "sagesse", "sag"]),
-            ("CHA", ["cha", "charisma", "charisme"]),
+        # On vérifie toutes les valeurs associées à la caractéristique (ex: 'STR' = '+2' et 'STR ' = '14')
+        # Mathématiquement dans D&D 5e, le score (1..30) est toujours strictement supérieur au modificateur !
+        stat_exact_keys = [
+            ("STR", ["str", "strmod", "strength", "for", "formod", "force", "scorefor", "strscore"]),
+            ("DEX", ["dex", "dexmod", "dexterity", "dexterite", "dexteritemod", "scoredex", "dexscore"]),
+            ("CON", ["con", "conmod", "constitution", "scorecon", "conscore"]),
+            ("INT", ["int", "intmod", "intelligence", "scoreint", "intscore"]),
+            ("WIS", ["wis", "wismod", "wisdom", "sag", "sagmod", "sagesse", "scoresag", "wisscore"]),
+            ("CHA", ["cha", "chamod", "charisma", "charisme", "scorecha", "chascore"]),
         ]
 
-        for code, kw_list in stat_codes:
-            score_candidates = []
-            for kw in kw_list:
-                kw_norm = normalize_key(kw)
-                # Teste correspondances
-                for k_norm, (_, v_raw) in norm_fields.items():
-                    if kw_norm == k_norm or k_norm.startswith(kw_norm):
-                        nums = re.findall(r"\b(\d{1,2})\b", v_raw)
-                        for n in nums:
-                            iv = int(n)
-                            if 1 <= iv <= 30:
-                                score_candidates.append(iv)
-            
-            if score_candidates:
-                # Dans D&D, le score de base est toujours >= modificateur
-                # Ex: entre 2 et 14, le score est 14 !
-                extracted["raw_abilities"][code] = max(score_candidates)
+        for code, key_list in stat_exact_keys:
+            candidates = []
+            for raw_val in get_all_vals(key_list, exact=True):
+                for m in re.findall(r"[+-]?\d{1,2}", raw_val):
+                    iv = int(m)
+                    if 1 <= iv <= 30:
+                        candidates.append(iv)
+            if candidates:
+                extracted["raw_abilities"][code] = max(candidates)
 
         # 4. PV, CA & Vitesse
-        hp_max = get_field_val(["hpmax", "maxhp", "pvmax", "maximumdepointsdevie"])
+        hp_max = get_first_val(["hpmax", "maxhp", "pvmax", "maximumdepointsdevie"], exact=True)
+        if not hp_max: hp_max = get_first_val(["hpmax", "maxhp", "pvmax"])
         if hp_max:
             m = re.search(r"\b(\d+)\b", hp_max)
             if m: extracted["pv_max"] = int(m.group(1))
 
-        hp_cur = get_field_val(["hpcurrent", "currenthp", "pvactuels", "pointsdevieactuels"])
+        hp_cur = get_first_val(["hpcurrent", "currenthp", "pvactuels", "pointsdevieactuels"], exact=True)
+        if not hp_cur: hp_cur = get_first_val(["hpcurrent", "currenthp", "pvactuels"])
         if hp_cur:
             m = re.search(r"\b(\d+)\b", hp_cur)
             if m: extracted["pv_current"] = int(m.group(1))
         else:
             extracted["pv_current"] = extracted["pv_max"]
 
-        ca_val = get_field_val(["ac", "armorclass", "ca", "classedarmure"], exact=True)
-        if not ca_val: ca_val = get_field_val(["armorclass", "ca"])
+        ca_val = get_first_val(["ac", "armorclass", "ca", "classedarmure"], exact=True)
         if ca_val:
             m = re.search(r"\b(\d+)\b", ca_val)
             if m: extracted["armor_class"] = int(m.group(1))
 
-        spd_val = get_field_val(["speed", "vitesse", "deplacement"], exact=True)
-        if not spd_val: spd_val = get_field_val(["speed", "vitesse"])
+        spd_val = get_first_val(["speed", "vitesse", "deplacement"], exact=True)
         if spd_val:
             m = re.search(r"\b(\d+)\b", spd_val)
             if m: extracted["speed"] = int(m.group(1))
 
-        # 5. Monnaies & Devises (PO, PA, PC, PE, PP)
+        # 5. Monnaies & Devises (recherche EXACTE pour éviter toute collision avec 'speed', 'perception', etc.)
         cur_fields = [
             ("pp", ["pp", "platinum", "platine"]),
-            ("po", ["gp", "po", "gold", "or"]),
+            ("po", ["gp", "po", "gold"]),
             ("pe", ["ep", "pe", "electrum"]),
             ("pa", ["sp", "pa", "silver", "argent"]),
             ("pc", ["cp", "pc", "copper", "cuivre"]),
         ]
         for cur_key, cur_pats in cur_fields:
-            c_val = get_field_val(cur_pats, exact=True)
-            if not c_val: c_val = get_field_val(cur_pats)
+            c_val = get_first_val(cur_pats, exact=True)
             if c_val:
                 m_c = re.search(r"\b(\d+)\b", c_val)
                 if m_c:
                     extracted["currency"][cur_key] = int(m_c.group(1))
 
         # 6. Équipement & Inventaire
-        equip_text = get_field_val(["equipment", "equipement", "inventaire", "objets", "sac", "treasure", "tresor"])
+        equip_text = get_first_val(["equipment", "equipement", "inventaire", "objets", "sac"], exact=True)
+        if not equip_text:
+            equip_text = get_first_val(["equipment", "equipement", "inventaire"])
         if equip_text:
             extracted["inventory"] = parse_items_from_text(equip_text)
 
-        # 7. Compétences & Sauvegardes
-        for sk_eng, sk_fr in SKILL_TRANSLATION.items():
-            sk_val = get_field_val([sk_eng, f"{sk_eng}prof", f"cb{sk_eng}"])
-            if sk_val and any(x in sk_val.lower() for x in ["yes", "true", "1", "/yes", "on", "x", "check", "6", "7", "5"]):
-                if sk_fr not in extracted["skill_proficiencies"]:
-                    extracted["skill_proficiencies"].append(sk_fr)
+        # 7. Armes depuis les champs AcroForm (Wpn Name, Wpn Name 2, Wpn Name 3, Wpn1 Damage...)
+        attacks_notes = get_first_val(["attacksspellcasting"], exact=True) or ""
+        wpn_slots = [
+            (["wpnname", "wpn1name", "weapon1"], ["wpn1damage", "wpndamage", "weapon1damage"]),
+            (["wpnname2", "wpn2name", "weapon2"], ["wpn2damage", "weapon2damage"]),
+            (["wpnname3", "wpn3name", "weapon3"], ["wpn3damage", "weapon3damage"]),
+        ]
+        for name_keys, dmg_keys in wpn_slots:
+            w_name = get_first_val(name_keys, exact=True)
+            if w_name:
+                w_dmg_raw = get_first_val(dmg_keys, exact=True) or "1d8"
+                m_dice = re.search(r"(\d+d\d+)", w_dmg_raw, re.IGNORECASE)
+                dice_str = m_dice.group(1).lower() if m_dice else "1d8"
+                
+                dmg_type = "tranchant"
+                if "perf" in w_dmg_raw.lower(): dmg_type = "perforant"
+                elif "cont" in w_dmg_raw.lower(): dmg_type = "contondant"
+                
+                w_low = w_name.lower()
+                is_ranged = any(x in w_low for x in ["arc", "arbalète", "fronde", "dague de jet"])
+                is_finesse = any(x in w_low for x in ["cimeterre", "rapière", "dague", "épée courte", "fouet"])
+                
+                m_mag = re.search(r"\+\s*(\d+)", w_name)
+                magic_b = int(m_mag.group(1)) if m_mag else 0
+                
+                extra_desc = ""
+                if "coutille" in w_low and "critique" in attacks_notes.lower():
+                    extra_desc = "+7 dégâts si critique"
+                
+                extracted["weapons"].append({
+                    "name": w_name.strip(),
+                    "damage_dice": dice_str,
+                    "damage_type": dmg_type,
+                    "is_ranged": is_ranged,
+                    "is_finesse": is_finesse,
+                    "magic_bonus": magic_b,
+                    "extra_damage_desc": extra_desc
+                })
 
-        for save_code, save_names in [("STR", ["for", "str"]), ("DEX", ["dex"]), ("CON", ["con"]), ("INT", ["int"]), ("WIS", ["sag", "wis"]), ("CHA", ["cha"])]:
-            for sn in save_names:
-                st_val = get_field_val([f"st{sn}", f"save{sn}", f"{sn}save", f"st_{sn}"])
-                if st_val and any(x in st_val.lower() for x in ["yes", "true", "1", "/yes", "on", "x"]):
+        # 8. Compétences & Jets de Sauvegarde maîtrisés
+        for sk_eng, sk_fr in SKILL_TRANSLATION.items():
+            sk_vals = get_all_vals([sk_eng, f"{sk_eng}prof", f"cb{sk_eng}"], exact=True)
+            for sv in sk_vals:
+                if sv and sv.lower() not in ["0", "no", "false", "off", "/off"]:
+                    if sk_fr not in extracted["skill_proficiencies"]:
+                        extracted["skill_proficiencies"].append(sk_fr)
+
+        save_mappings = [
+            ("STR", ["ststrength", "ststr", "stfor", "stforce"]),
+            ("DEX", ["stdexterity", "stdex", "stdexterite"]),
+            ("CON", ["stconstitution", "stcon"]),
+            ("INT", ["stintelligence", "stint"]),
+            ("WIS", ["stwisdom", "stwis", "stsag", "stsagesse"]),
+            ("CHA", ["stcharisma", "stcha", "stcharisme"]),
+        ]
+        for save_code, save_keys in save_mappings:
+            st_vals = get_all_vals(save_keys, exact=True)
+            for stv in st_vals:
+                if stv and stv.lower() not in ["0", "no", "false", "off", "/off"]:
                     if save_code not in extracted["saving_throw_proficiencies"]:
                         extracted["saving_throw_proficiencies"].append(save_code)
 
-        # 8. Fallback textuel pour compléter les caractéristiques ou l'équipement
+        # 9. Sorts depuis les champs AcroForm (Spells 1014..1099) et le texte des pages
+        spell_field_vals = []
+        for k_norm, vals in norm_multi.items():
+            if k_norm.startswith("spells10") or k_norm.startswith("spellname"):
+                spell_field_vals.extend(vals)
+
         full_text = ""
         for page in pdf.pages:
             t = page.extract_text()
             if t:
                 full_text += t + "\n"
 
-        if full_text:
-            # Fallback Nom
-            if not extracted["name"]:
-                m_nom = re.search(r"(?:Hythus[^\n\r]+)", full_text, re.IGNORECASE)
-                if m_nom: extracted["name"] = m_nom.group(0).strip()
+        combined_spell_search = "\n".join(spell_field_vals) + "\n" + full_text
 
-            # Fallback Caractéristiques depuis le texte vertical D&D
-            # FORCE \n +2 \n 14
+        for sp_db_name, sp_data in db.SPELLS_DB.items():
+            # Nom court sans parenthèses anglaises, ex: "Baie nourricière (Goodberry)" -> "Baie nourricière"
+            short_name = re.sub(r"\s*\([^)]*\)", "", sp_db_name).strip()
+            variants = [short_name, short_name.replace("é", "e").replace("è", "e").replace("ê", "e")]
+            if short_name.lower().startswith("baie nourricière"):
+                variants.extend(["Baies nourricières", "Baie nourriciere", "Baies nourricieres"])
+            if any(re.search(rf"\b{re.escape(v)}\b", combined_spell_search, re.IGNORECASE) for v in variants):
+                if not any(s["name"].lower() == sp_db_name.lower() for s in extracted["known_spells"]):
+                    extracted["known_spells"].append({
+                        "name": sp_db_name,
+                        "level": sp_data["level"],
+                        "school": sp_data.get("school", "Évocation"),
+                        "casting_time": sp_data.get("time", "1 action"),
+                        "range_area": sp_data.get("range", "18 m"),
+                        "duration": "Concentration" if sp_data.get("conc") else "Instantanée",
+                        "concentration": sp_data.get("conc", False),
+                        "description": sp_data.get("desc", "")
+                    })
+
+        # Fallback textuel pour les caractéristiques si le PDF a été aplati sans AcroForm
+        if full_text:
             for code, kw in [
                 ("STR", r"(?:FORCE|STR)"),
                 ("DEX", r"(?:DEXTÉRITÉ|DEXTERITE|DEX)"),
@@ -457,61 +539,15 @@ def parse_pdf_character(file_bytes: bytes) -> Tuple[Dict[str, Any], str]:
                 ("WIS", r"(?:SAGESSE|WIS|SAG)"),
                 ("CHA", r"(?:CHARISME|CHA)"),
             ]:
-                if code not in extracted["raw_abilities"] or extracted["raw_abilities"][code] == 10:
+                if code not in extracted["raw_abilities"]:
                     m_stat = re.search(rf"{kw}\s*(?:[+-]?\d{{1,2}})?\s*(\d{{1,2}})\b", full_text, re.IGNORECASE)
                     if m_stat:
                         extracted["raw_abilities"][code] = int(m_stat.group(1))
 
-            # Fallback Armes
-            weapon_patterns = [
-                ("Arc long +1", "1d8", "perforant", True, 1, ""),
-                ("Cimeterre", "1d6", "tranchant", False, 0, ""),
-                ("Coutille vicieuse", "1d10", "tranchant", False, 0, "+7 dégâts si critique"),
-            ]
-            for w_name, w_dice, w_type, is_ranged, w_magic, w_extra in weapon_patterns:
-                if re.search(rf"\b{re.escape(w_name)}\b", full_text, re.IGNORECASE):
-                    if not any(w["name"].lower() == w_name.lower() for w in extracted["weapons"]):
-                        extracted["weapons"].append({
-                            "name": w_name,
-                            "damage_dice": w_dice,
-                            "damage_type": w_type,
-                            "is_ranged": is_ranged,
-                            "is_finesse": (w_name == "Cimeterre"),
-                            "magic_bonus": w_magic,
-                            "extra_damage_desc": w_extra
-                        })
-
-            # Fallback Sorts
-            spell_list_candidates = [
-                ("Illusion mineure", 0),
-                ("Marque du Chasseur", 1),
-                ("Baie nourricière", 1),
-                ("Protection contre le mal et le bien", 1),
-                ("Grêle d'Épines", 1),
-                ("Esprit Guérisseur", 2),
-                ("Zone de vérité", 2),
-            ]
-            for sp_name, sp_lvl in spell_list_candidates:
-                if re.search(rf"\b{re.escape(sp_name)}\b", full_text, re.IGNORECASE) or re.search(rf"\b{sp_name.replace('é', 'e')}\b", full_text, re.IGNORECASE):
-                    if not any(s["name"].lower() == sp_name.lower() for s in extracted["known_spells"]):
-                        sp_data = db.SPELLS_DB.get(sp_name, {})
-                        extracted["known_spells"].append({
-                            "name": sp_name,
-                            "level": sp_lvl,
-                            "school": sp_data.get("school", "Évocation"),
-                            "casting_time": sp_data.get("time", "1 action"),
-                            "range_area": sp_data.get("range", "18 m"),
-                            "duration": "1 heure" if sp_lvl == 1 else "Instantanée",
-                            "concentration": sp_data.get("conc", False),
-                            "description": sp_data.get("desc", "")
-                        })
-
     # Valeurs par défaut si non trouvées
-    if not extracted["name"]: extracted["name"] = "Hythus Feuille d'Argent"
-    if not extracted["race"]: extracted["race"] = "Haut elfe"
-    if not extracted["classes"]: extracted["classes"] = {"Rôdeur": 5, "Roublard": 2}
-    if not extracted["subclasses"] and "Rôdeur" in extracted["classes"]:
-        extracted["subclasses"]["Rôdeur"] = "Chasseur de Monstres (XGtE)"
+    if not extracted["name"]: extracted["name"] = "Aventurier"
+    if not extracted["race"]: extracted["race"] = "Humain"
+    if not extracted["classes"]: extracted["classes"] = {"Guerrier": 1}
 
     for ab in ["STR", "DEX", "CON", "INT", "WIS", "CHA"]:
         if ab not in extracted["raw_abilities"]:
@@ -520,21 +556,24 @@ def parse_pdf_character(file_bytes: bytes) -> Tuple[Dict[str, Any], str]:
     # Résumé complet
     classes_str = " / ".join([f"{cls} ({extracted['subclasses'].get(cls, '')}) Niv {lvl}".replace(" ()", "") for cls, lvl in extracted["classes"].items()])
     abilities_str = f"FOR={extracted['raw_abilities']['STR']}, DEX={extracted['raw_abilities']['DEX']}, CON={extracted['raw_abilities']['CON']}, INT={extracted['raw_abilities']['INT']}, SAG={extracted['raw_abilities']['WIS']}, CHA={extracted['raw_abilities']['CHA']}"
-    bourse_str = f"{extracted['currency']['po']} PO, {extracted['currency']['pa']} PA, {extracted['currency']['pp']} PP"
-    if extracted['currency']['pc'] > 0: bourse_str += f", {extracted['currency']['pc']} PC"
-    if extracted['currency']['pe'] > 0: bourse_str += f", {extracted['currency']['pe']} PE"
+    
+    curr_parts = []
+    for k_c, lbl_c in [("po", "PO"), ("pa", "PA"), ("pc", "PC"), ("pe", "PE"), ("pp", "PP")]:
+        if extracted["currency"].get(k_c, 0) > 0:
+            curr_parts.append(f"{extracted['currency'][k_c]} {lbl_c}")
+    bourse_str = ", ".join(curr_parts) if curr_parts else "0 PO"
     
     summary = (
         f"✅ **Extraction Réussie depuis le PDF :**\n\n"
-        f"• **Héros** : {extracted['name']} ({extracted['race']}) — Historique : *{extracted.get('background', 'Grand Voyageur')}* (Alignement : *{extracted.get('alignment', 'CN')}*)\n"
+        f"• **Héros** : {extracted['name']} ({extracted['race']}) — Historique : *{extracted.get('background') or 'Aventurier'}* (Alignement : *{extracted.get('alignment') or 'Neutre'}*)\n"
         f"• **Classes & Niveaux** : **{classes_str}**\n"
         f"• **Points de Vie** : **{extracted['pv_current']}/{extracted['pv_max']} PV** | **CA** : **{extracted['armor_class']}** | **Vitesse** : {extracted['speed']} m\n"
         f"• **Caractéristiques Réelles** : **{abilities_str}**\n"
         f"• **Bourse & Trésor** : **{bourse_str}**\n"
-        f"• **Inventaire Détecté** : **{len(extracted['inventory'])} objets** dans le sac (Broche, Cape d'invisibilité, Armure, Rations, Potions...)\n"
-        f"• **Arsenal Détecté** : **{len(extracted['weapons'])} armes** ({', '.join([w['name'] for w in extracted['weapons']])})\n"
-        f"• **Grimoire de Sorts** : **{len(extracted['known_spells'])} sorts** ({', '.join([s['name'] for s in extracted['known_spells']])})\n"
-        f"• **Compétences Maîtrisées** : {', '.join(extracted['skill_proficiencies']) if extracted['skill_proficiencies'] else 'Détectées'}"
+        f"• **Inventaire Détecté** : **{len(extracted['inventory'])} objets** dans le sac\n"
+        f"• **Arsenal Détecté** : **{len(extracted['weapons'])} armes** ({', '.join([w['name'] for w in extracted['weapons']]) if extracted['weapons'] else 'Aucune'})\n"
+        f"• **Grimoire de Sorts** : **{len(extracted['known_spells'])} sorts** ({', '.join([s['name'] for s in extracted['known_spells']]) if extracted['known_spells'] else 'Aucun'})\n"
+        f"• **Compétences Maîtrisées** : {', '.join(extracted['skill_proficiencies']) if extracted['skill_proficiencies'] else 'Standard'}"
     )
 
     return extracted, summary

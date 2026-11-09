@@ -567,10 +567,12 @@ SPELLS_DB = {
     "Décharge occulte (Eldritch Blast)": {"level": 0, "school": "Évocation", "time": "1 action", "range": "36 m", "conc": False, "desc": "Rayon d'énergie crépitante infligeant 1d10 dégâts de force (lance plusieurs rayons à plus haut niveau)."},
     "Lumière": {"level": 0, "school": "Évocation", "time": "1 action", "range": "Contact", "conc": False, "desc": "Fait luire un objet comme une torche pendant 1 heure."},
     "Assistance (Guidance)": {"level": 0, "school": "Divination", "time": "1 action", "range": "Contact", "conc": True, "desc": "La cible ajoute 1d4 à un test de caractéristique de son choix."},
+    "Illusion mineure": {"level": 0, "school": "Illusion", "time": "1 action", "range": "9 m", "conc": False, "desc": "Crée un son (du chuchotement au cri) ou l'image d'un objet (max cube de 1,5m) à portée pendant 1 minute."},
     
     # Niveau 1
     "Marque du Chasseur": {"level": 1, "school": "Divination", "time": "1 action bonus", "range": "27 m", "conc": True, "desc": "+1d6 dégâts sur chaque frappe contre la cible et avantage pour la pister."},
-    "Baie nourricière (Goodberry)": {"level": 1, "school": "Transmutation", "time": "1 action", "range": "Contact", "conc": False, "desc": "Crée jusqu'à 10 baies magiques. Manger une baie restaure 1 PV et nourrit pour la journée."},
+    "Baie nourricière (Goodberry)": {"level": 1, "school": "Transmutation", "time": "1 action", "range": "Contact", "conc": False, "desc": "Crée jusqu'à 10 baies magiques. Manger une baie rend 1 PV et nourrit pour la journée."},
+    "Protection contre le mal et le bien": {"level": 1, "school": "Abjuration", "time": "1 action", "range": "Contact", "conc": True, "desc": "Protège une créature contre les aberrations, célestes, élémentaires, fées, fiélons et morts-vivants (désavantage aux attaques contre la cible, immunité charme/peur/possession)."},
     "Grêle d'Épines": {"level": 1, "school": "Invocation", "time": "1 action bonus", "range": "Soi-même", "conc": True, "desc": "La prochaine attaque à distance déclenche une pluie d'épines infligeant 1d10 dégâts perforants en zone."},
     "Soin des blessures": {"level": 1, "school": "Évocation", "time": "1 action", "range": "Contact", "conc": False, "desc": "Restaure 1d8 + Modificateur de caractéristique magique PV à une créature touchée."},
     "Mot de guérison": {"level": 1, "school": "Évocation", "time": "1 action bonus", "range": "18 m", "conc": False, "desc": "Restaure 1d4 + Modificateur PV à distance par une action bonus."},
