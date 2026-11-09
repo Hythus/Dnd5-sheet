@@ -367,7 +367,8 @@ def get_default_character() -> CharacterSheet:
             Ability.CHA: 11,
         },
         classes={"Rôdeur": 5, "Roublard": 2},
-        subclasses={"Rôdeur": "Tueur de Monstres (XGtE)", "Roublard": "Voleur (PHB)"},
+        # Rôdeur Niv 5 >= 3 (Sous-classe débloquée). Roublard Niv 2 < 3 (Sous-classe bloquée jusqu'au niveau 3).
+        subclasses={"Rôdeur": "Tueur de Monstres (XGtE)"},
         saving_throw_proficiencies=[Ability.STR, Ability.DEX],
         skill_proficiencies=[
             "Acrobaties", "Athlétisme", "Discrétion", "Histoire",
@@ -601,12 +602,18 @@ with st.sidebar:
                             del char.subclasses[cls_name]
                         st.rerun()
 
-            # Sélecteur de sous-classe officielle
+            # Règle officielle D&D 5e : Sous-classe débloquée au niveau 3
+            cls_level = char.classes[cls_name]
             available_subs = db.CLASSES_DND.get(cls_name, {}).get("subclasses", [])
-            current_sub = char.subclasses.get(cls_name, available_subs[0] if available_subs else "Aucune")
-            sub_idx = available_subs.index(current_sub) if current_sub in available_subs else 0
-            selected_sub = st.selectbox(f"Sous-classe ({cls_name})", available_subs, index=sub_idx, key=f"sub_{cls_name}")
-            char.subclasses[cls_name] = selected_sub
+            if cls_level < 3:
+                st.info(f"🔒 **Sous-classe {cls_name}** : Accessible au **Niveau 3** (Actuel: Niv {cls_level})")
+                if cls_name in char.subclasses:
+                    del char.subclasses[cls_name]
+            else:
+                current_sub = char.subclasses.get(cls_name, available_subs[0] if available_subs else "Aucune")
+                sub_idx = available_subs.index(current_sub) if current_sub in available_subs else 0
+                selected_sub = st.selectbox(f"Sous-classe ({cls_name})", available_subs, index=sub_idx, key=f"sub_{cls_name}")
+                char.subclasses[cls_name] = selected_sub
 
         # Ajouter une nouvelle classe
         new_classes_avail = [c for c in db.CLASSES_DND.keys() if c not in char.classes]
@@ -615,9 +622,15 @@ with st.sidebar:
             if new_cls != "-- Sélectionner --":
                 if st.button(f"Emprunter la voie du {new_cls}"):
                     char.classes[new_cls] = 1
-                    sub_list = db.CLASSES_DND[new_cls]["subclasses"]
-                    char.subclasses[new_cls] = sub_list[0] if sub_list else "Spécialisation"
+                    # Au niveau 1, pas de sous-classe (débloquée au niveau 3)
+                    if new_cls in char.subclasses:
+                        del char.subclasses[new_cls]
                     st.rerun()
+
+        st.write("")
+        if st.button("🔄 Réinitialiser la fiche (Défaut Hythus)", use_container_width=True):
+            st.session_state.char = get_default_character()
+            st.rerun()
 
     with tab_stats:
         st.subheader("Caractéristiques Brutes")
@@ -709,7 +722,13 @@ with st.sidebar:
 # 6. BANNIÈRE PRINCIPALE HÉROÏQUE
 # ==============================================================================
 
-class_summary_str = " / ".join([f"{cls} ({char.subclasses.get(cls, '')}) Niv {lvl}" for cls, lvl in char.classes.items()])
+class_items = []
+for cls, lvl in char.classes.items():
+    if lvl >= 3 and cls in char.subclasses and char.subclasses[cls]:
+        class_items.append(f"{cls} ({char.subclasses[cls]}) Niv {lvl}")
+    else:
+        class_items.append(f"{cls} Niv {lvl}")
+class_summary_str = " / ".join(class_items)
 st.markdown(f"""
 <div class="hero-banner">
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
@@ -944,156 +963,190 @@ with st.container():
 st.divider()
 
 # ==============================================================================
-# 9. CORPS PRINCIPAL : ARSENAL, SORTS & APTITUDES
+# 9. CORPS PRINCIPAL : ONGLETS DÉDIÉS EN PLEINE LARGEUR
 # ==============================================================================
 
-col_left, col_right = st.columns([5, 5])
+tab_arsenal, tab_grimoire, tab_traits, tab_skills = st.tabs([
+    "⚔️ Arsenal & Combat",
+    "🔮 Grimoire & Sorts",
+    "✨ Aptitudes de Classe & Dons",
+    "📜 Compétences & Sauvegardes"
+])
 
-# --- COLONNE DE GAUCHE : ARSENAL & SORTS ---
-with col_left:
-    st.markdown("### ⚔️ Arsenal & Attaques")
+# ------------------------------------------------------------------------------
+# ONGLET 1 : ARSENAL & COMBAT
+# ------------------------------------------------------------------------------
+with tab_arsenal:
+    st.markdown("### ⚔️ Arsenal & Attaques Équipées")
     
-    # Affichage des armes équipées
-    for idx_w, w in enumerate(char.weapons):
-        att_bonus, dmg_formula = char.calculate_weapon_attack(w)
-        att_str = f"+{att_bonus}" if att_bonus >= 0 else f"{att_bonus}"
-        
-        with st.container():
-            col_w_info, col_w_del = st.columns([6, 1])
-            with col_w_info:
+    if char.weapons:
+        for idx_w, w in enumerate(char.weapons):
+            att_bonus, dmg_formula = char.calculate_weapon_attack(w)
+            att_str = f"+{att_bonus}" if att_bonus >= 0 else f"{att_bonus}"
+            
+            col_w_card, col_w_del = st.columns([8, 1])
+            with col_w_card:
                 st.markdown(f"""
                 <div class="card-combat">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 1.15rem; font-weight: bold; color: #fff;">{w.name}</span>
-                        <span style="background: {theme['primary']}; padding: 3px 8px; border-radius: 4px; font-weight: bold; color: #fff;">Toucher : {att_str}</span>
+                        <span style="font-size: 1.2rem; font-weight: bold; color: #fff;">{w.name}</span>
+                        <span style="background: {theme['primary']}; padding: 4px 10px; border-radius: 4px; font-weight: bold; color: #fff;">Toucher : {att_str}</span>
                     </div>
-                    <div style="color: #c9baa2; margin-top: 4px; font-size: 0.95rem;">
+                    <div style="color: #c9baa2; margin-top: 6px; font-size: 1rem;">
                         🎲 <b>Dégâts :</b> {dmg_formula} | <i>{'Distance' if w.is_ranged else ('Finesse' if w.is_finesse else 'Corps-à-corps')}</i>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
             with col_w_del:
                 st.write("")
-                if st.button("🗑️", key=f"del_w_{idx_w}", help="Supprimer cette arme"):
+                if st.button("🗑️", key=f"del_w_{idx_w}", help="Retirer cette arme"):
                     char.weapons.pop(idx_w)
                     st.rerun()
+    else:
+        st.info("Aucune arme équipée pour le moment.")
 
-    # Compendium d'Armes pour ajout rapide
-    with st.expander("➕ Ajouter une Arme depuis la Base Officielle"):
+    st.divider()
+    st.markdown("#### ➕ Ajouter une Arme depuis la Base Officielle")
+    col_aw1, col_aw2, col_aw3 = st.columns([3, 2, 3])
+    with col_aw1:
         weapon_keys = list(db.WEAPONS_DB.keys())
-        chosen_w_name = st.selectbox("Choisir une arme", weapon_keys, key="add_weapon_select")
+        chosen_w_name = st.selectbox("Choisir l'arme de base", weapon_keys, key="add_weapon_select")
         w_data = db.WEAPONS_DB[chosen_w_name]
-        st.caption(f"Propriétés : {w_data['damage']} {w_data['type']} | Finesse : {w_data['finesse']} | Distance : {w_data['ranged']}")
+        st.caption(f"Dégâts : {w_data['damage']} {w_data['type']} | Finesse : {w_data['finesse']} | Distance : {w_data['ranged']}")
+    with col_aw2:
         magic_mod = st.number_input("Bonus magique (+1, +2...)", min_value=0, max_value=5, value=0, key="add_w_magic")
+    with col_aw3:
         custom_suffix = st.text_input("Effet spécial additionnel", value="", placeholder="ex: +1d6 feu si critique", key="add_w_desc")
-        
-        if st.button("Équiper cette arme"):
-            final_name = f"{chosen_w_name} +{magic_mod}" if magic_mod > 0 else chosen_w_name
-            char.weapons.append(Weapon(
-                name=final_name,
-                damage_dice=w_data["damage"],
-                damage_type=w_data["type"],
-                is_finesse=w_data["finesse"],
-                is_ranged=w_data["ranged"],
-                magic_bonus=magic_mod,
-                extra_damage_desc=custom_suffix
-            ))
-            st.success(f"{final_name} ajoutée à votre arsenal !")
-            st.rerun()
 
-    st.write("")
-    st.markdown("### 🔮 Grimoire & Emplacements de Sorts")
+    if st.button("⚔️ Équiper cette arme", use_container_width=False):
+        final_name = f"{chosen_w_name} +{magic_mod}" if magic_mod > 0 else chosen_w_name
+        char.weapons.append(Weapon(
+            name=final_name,
+            damage_dice=w_data["damage"],
+            damage_type=w_data["type"],
+            is_finesse=w_data["finesse"],
+            is_ranged=w_data["ranged"],
+            magic_bonus=magic_mod,
+            extra_damage_desc=custom_suffix
+        ))
+        st.success(f"{final_name} ajoutée à votre arsenal !")
+        st.rerun()
 
-    # 1. Gestion des emplacements de sorts standards
+
+# ------------------------------------------------------------------------------
+# ONGLET 2 : GRIMOIRE & SORTS
+# ------------------------------------------------------------------------------
+with tab_grimoire:
+    st.markdown("### 🔮 Grimoire & Magie")
+
+    # 1. Emplacements de sorts
     slots_max = db.calculate_spell_slots(char.classes)
     pact_slots_cnt, pact_slots_lvl = db.calculate_pact_slots(char.classes)
 
-    if slots_max:
-        st.markdown("##### Emplacements de Sorts Standards")
-        for lvl, total_slots in slots_max.items():
-            used_slots = char.spell_slots_used.get(lvl, 0)
-            avail = max(0, total_slots - used_slots)
-            
-            col_s1, col_s2, col_s3 = st.columns([3, 4, 3])
-            with col_s1:
-                st.write(f"**Niveau {lvl}** : {avail}/{total_slots}")
-            with col_s2:
-                # Pastilles visuelles
-                pills = "🟢 " * avail + "🔴 " * used_slots
-                st.write(pills)
-            with col_s3:
-                btn_c1, btn_c2 = st.columns(2)
-                with btn_c1:
-                    if st.button("−1", key=f"use_slot_{lvl}", help="Dépenser 1 emplacement", disabled=(avail <= 0)):
-                        char.spell_slots_used[lvl] = used_slots + 1
-                        st.rerun()
-                with btn_c2:
-                    if st.button("+1", key=f"rest_slot_{lvl}", help="Récupérer 1 emplacement", disabled=(used_slots <= 0)):
-                        char.spell_slots_used[lvl] = max(0, used_slots - 1)
-                        st.rerun()
-
-    # 2. Gestion de la Magie de Pacte (Occultiste)
-    if pact_slots_cnt > 0:
-        st.markdown(f"##### 👁️ Magie de Pacte (Occultiste - Niveau {pact_slots_lvl})")
-        avail_pact = max(0, pact_slots_cnt - char.pact_slots_used)
-        col_p1, col_p2, col_p3 = st.columns([3, 4, 3])
-        with col_p1:
-            st.write(f"**Slots Pacte** : {avail_pact}/{pact_slots_cnt}")
-        with col_p2:
-            st.write("🟢 " * avail_pact + "🔴 " * char.pact_slots_used)
-        with col_p3:
-            p_c1, p_c2 = st.columns(2)
-            with p_c1:
-                if st.button("−1", key="use_pact_slot", disabled=(avail_pact <= 0)):
-                    char.pact_slots_used += 1
-                    st.rerun()
-            with p_c2:
-                if st.button("+1", key="rest_pact_slot", disabled=(char.pact_slots_used <= 0)):
-                    char.pact_slots_used = max(0, char.pact_slots_used - 1)
-                    st.rerun()
-
-    if not slots_max and pact_slots_cnt == 0:
-        st.caption("Ce personnage ne possède pas d'emplacements de sorts de classe.")
-
-    # Liste des sorts connus
-    with st.expander("📖 Consulter & Gérer les Sorts Connus", expanded=True):
-        if char.known_spells:
-            for s_idx, sp in enumerate(char.known_spells):
-                col_sp_info, col_sp_act = st.columns([7, 2])
-                with col_sp_info:
-                    conc_badge = "🧠 [Concentration]" if sp.concentration else ""
-                    st.markdown(f"""
-                    **{sp.name}** *(Niv {sp.level} - {sp.school})* {conc_badge}  
-                    ⏱️ *{sp.casting_time}* | 📏 *{sp.range_area}* | ⏳ *{sp.duration}*  
-                    <small style="color: #a39580;">{sp.description}</small>
-                    """, unsafe_allow_html=True)
-                with col_sp_act:
-                    # Bouton pour lancer le sort (décompte un slot automatiquement si niveau > 0)
-                    if sp.level > 0:
-                        has_slot = (char.spell_slots_used.get(sp.level, 0) < slots_max.get(sp.level, 0)) or (pact_slots_cnt > 0 and char.pact_slots_used < pact_slots_cnt)
-                        if st.button(f"Lancer (Niv {sp.level})", key=f"cast_{s_idx}", disabled=not has_slot):
-                            if char.spell_slots_used.get(sp.level, 0) < slots_max.get(sp.level, 0):
-                                char.spell_slots_used[sp.level] = char.spell_slots_used.get(sp.level, 0) + 1
-                            elif pact_slots_cnt > 0 and char.pact_slots_used < pact_slots_cnt:
-                                char.pact_slots_used += 1
-                            st.success(f"Sort {sp.name} incanté !")
+    st.markdown("#### 🌟 Emplacements de Sorts Disponibles")
+    if slots_max or pact_slots_cnt > 0:
+        if slots_max:
+            for lvl, total_slots in slots_max.items():
+                used_slots = char.spell_slots_used.get(lvl, 0)
+                avail = max(0, total_slots - used_slots)
+                
+                col_sl1, col_sl2, col_sl3 = st.columns([3, 4, 3])
+                with col_sl1:
+                    st.write(f"**Niveau {lvl}** : `{avail} / {total_slots} disponibles`")
+                with col_sl2:
+                    pills = "🟢 " * avail + "🔴 " * used_slots
+                    st.write(pills)
+                with col_sl3:
+                    c_btn1, c_btn2 = st.columns(2)
+                    with c_btn1:
+                        if st.button("−1 Dépenser", key=f"use_slot_{lvl}", disabled=(avail <= 0)):
+                            char.spell_slots_used[lvl] = used_slots + 1
                             st.rerun()
-                    if st.button("Oublier", key=f"del_spell_{s_idx}"):
-                        char.known_spells.pop(s_idx)
-                        st.rerun()
-                st.write("---")
-        else:
-            st.caption("Aucun sort dans votre grimoire.")
+                    with c_btn2:
+                        if st.button("+1 Rendre", key=f"rest_slot_{lvl}", disabled=(used_slots <= 0)):
+                            char.spell_slots_used[lvl] = max(0, used_slots - 1)
+                            st.rerun()
 
-    # Ajouter un sort depuis le catalogue
-    with st.expander("➕ Apprendre un Sort depuis le Catalogue"):
-        spell_keys = list(db.SPELLS_DB.keys())
-        chosen_sp_name = st.selectbox("Choisir un sort", spell_keys, key="add_spell_select")
+        if pact_slots_cnt > 0:
+            st.divider()
+            st.markdown(f"##### 👁️ Magie de Pacte (Occultiste - Niveau {pact_slots_lvl})")
+            avail_pact = max(0, pact_slots_cnt - char.pact_slots_used)
+            col_p1, col_p2, col_p3 = st.columns([3, 4, 3])
+            with col_p1:
+                st.write(f"**Slots de Pacte** : `{avail_pact} / {pact_slots_cnt} disponibles`")
+            with col_p2:
+                st.write("🟢 " * avail_pact + "🔴 " * char.pact_slots_used)
+            with col_p3:
+                p_c1, p_c2 = st.columns(2)
+                with p_c1:
+                    if st.button("−1 Slot Pacte", key="use_pact_slot", disabled=(avail_pact <= 0)):
+                        char.pact_slots_used += 1
+                        st.rerun()
+                with p_c2:
+                    if st.button("+1 Slot Pacte", key="rest_pact_slot", disabled=(char.pact_slots_used <= 0)):
+                        char.pact_slots_used = max(0, char.pact_slots_used - 1)
+                        st.rerun()
+    else:
+        st.info("Ce personnage ne dispose pas d'emplacements de sorts de classe.")
+
+    st.divider()
+
+    # 2. Sorts connus dans le grimoire
+    st.markdown("#### 📖 Sorts Connus dans votre Grimoire")
+    if char.known_spells:
+        for s_idx, sp in enumerate(char.known_spells):
+            col_sp_card, col_sp_act = st.columns([7, 3])
+            with col_sp_card:
+                conc_badge = "🧠 [Concentration]" if sp.concentration else ""
+                st.markdown(f"""
+                <div class="card-combat">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 1.15rem; font-weight: bold; color: {theme['accent']};">{sp.name}</span>
+                        <span style="font-size: 0.9rem; color: #d4af37;">Niv {sp.level} • {sp.school} {conc_badge}</span>
+                    </div>
+                    <div style="color: #b5a895; font-size: 0.95rem; margin-top: 4px;">
+                        ⏱️ <b>Incantation :</b> {sp.casting_time} | 📏 <b>Portée :</b> {sp.range_area} | ⏳ <b>Durée :</b> {sp.duration}
+                    </div>
+                    <div style="color: #e0d5c1; margin-top: 6px; font-size: 1.02rem;">
+                        {sp.description}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+            with col_sp_act:
+                st.write("")
+                # Bouton pour lancer le sort (décompte un slot si niveau > 0)
+                if sp.level > 0:
+                    avail_normal = slots_max.get(sp.level, 0) - char.spell_slots_used.get(sp.level, 0)
+                    avail_pact_slots = (pact_slots_cnt - char.pact_slots_used) if pact_slots_cnt > 0 else 0
+                    has_slot = (avail_normal > 0) or (avail_pact_slots > 0)
+                    
+                    if st.button(f"✨ Lancer (Niv {sp.level})", key=f"cast_{s_idx}", disabled=not has_slot, use_container_width=True):
+                        if avail_normal > 0:
+                            char.spell_slots_used[sp.level] = char.spell_slots_used.get(sp.level, 0) + 1
+                        elif avail_pact_slots > 0:
+                            char.pact_slots_used += 1
+                        st.success(f"Sort {sp.name} incanté !")
+                        st.rerun()
+                if st.button("🗑️ Oublier ce sort", key=f"del_spell_{s_idx}", use_container_width=True):
+                    char.known_spells.pop(s_idx)
+                    st.rerun()
+    else:
+        st.info("Aucun sort dans votre grimoire pour le moment.")
+
+    st.divider()
+
+    # 3. Ajouter un sort depuis le catalogue
+    st.markdown("#### ➕ Apprendre un Sort (Catalogue Officiel)")
+    spell_keys = list(db.SPELLS_DB.keys())
+    col_as1, col_as2 = st.columns([3, 1])
+    with col_as1:
+        chosen_sp_name = st.selectbox("Choisir un sort dans le catalogue", spell_keys, key="add_spell_select")
         sp_meta = db.SPELLS_DB[chosen_sp_name]
-        st.markdown(f"**Niveau** : {sp_meta['level']} | **École** : {sp_meta['school']} | **Temps** : {sp_meta['time']} | **Portée** : {sp_meta['range']}")
-        st.caption(sp_meta['desc'])
-        
-        if st.button("Ajouter à mon Grimoire"):
+        st.caption(f"Niveau : {sp_meta['level']} | École : {sp_meta['school']} | Incantation : {sp_meta['time']} | Portée : {sp_meta['range']} | {sp_meta['desc']}")
+    with col_as2:
+        st.write("")
+        st.write("")
+        if st.button("📖 Ajouter au Grimoire", use_container_width=True):
             char.known_spells.append(Spell(
                 name=chosen_sp_name,
                 level=sp_meta["level"],
@@ -1108,66 +1161,91 @@ with col_left:
             st.rerun()
 
 
-# --- COLONNE DE DROITE : APTITUDES CLIQUABLES & COMPÉTENCES ---
-with col_right:
-    st.markdown("### 📜 Maîtrises & Compétences")
-    
-    tab_traits, tab_comp, tab_sauv = st.tabs(["Aptitudes de Classe", "Compétences", "Sauvegardes"])
+# ------------------------------------------------------------------------------
+# ONGLET 3 : APTITUDES DE CLASSE & DONS
+# ------------------------------------------------------------------------------
+with tab_traits:
+    st.markdown("### ✨ Aptitudes de Classe & Capacités Spéciales")
+    st.caption("Consultez et déployez chaque aptitude pour afficher son descriptif complet officiel.")
 
-    # 1. Onglet Aptitudes Cliquables
-    with tab_traits:
-        st.caption("Cliquez sur chaque aptitude pour révéler son descriptif complet officiel.")
-        
+    if char.traits_and_features:
         for t_idx, tr_name in enumerate(char.traits_and_features):
-            # Cherche dans FEATURES_DB
+            # Cherche la correspondance dans FEATURES_DB
             feature_info = None
             for db_feat_name, data in db.FEATURES_DB.items():
                 if db_feat_name.lower() in tr_name.lower() or tr_name.lower() in db_feat_name.lower():
                     feature_info = data
                     break
 
-            with st.expander(f"✨ **{tr_name}**", expanded=False):
+            with st.expander(f"🌟 **{tr_name}**", expanded=True):
                 if feature_info:
-                    st.markdown(f"**Source :** `{feature_info['source']}` | **Type :** `{feature_info['type']}`")
-                    st.markdown(f"<div style='background: rgba(0,0,0,0.25); padding: 10px; border-radius: 6px; border-left: 3px solid {theme['accent']}; font-size: 1.02rem;'>{feature_info['desc']}</div>", unsafe_allow_html=True)
+                    st.markdown(f"🏷️ **Source :** `{feature_info['source']}` | ⚡ **Type d'action :** `{feature_info['type']}`")
+                    st.markdown(f"""
+                    <div style='background: rgba(0,0,0,0.3); padding: 12px 16px; border-radius: 6px; border-left: 4px solid {theme['accent']}; font-size: 1.05rem; line-height: 1.5; color: #e8dcc6;'>
+                        {feature_info['desc']}
+                    </div>
+                    """, unsafe_allow_html=True)
                 else:
-                    st.markdown(f"<div style='background: rgba(0,0,0,0.25); padding: 10px; border-radius: 6px; font-size: 1.02rem;'>Aptitude spécifique à votre historique ou votre race : <i>{tr_name}</i>.</div>", unsafe_allow_html=True)
+                    st.markdown(f"""
+                    <div style='background: rgba(0,0,0,0.3); padding: 12px 16px; border-radius: 6px; font-size: 1.05rem;'>
+                        Aptitude issue de votre héritage, historique ou équipement : <b>{tr_name}</b>.
+                    </div>
+                    """, unsafe_allow_html=True)
                 
-                if st.button("Retirer cette aptitude", key=f"del_feat_{t_idx}"):
+                st.write("")
+                if st.button("🗑️ Retirer cette aptitude", key=f"del_feat_{t_idx}"):
                     char.traits_and_features.pop(t_idx)
                     st.rerun()
+    else:
+        st.info("Aucune aptitude enregistrée.")
 
-        st.divider()
-        st.markdown("##### ➕ Ajouter une Aptitude")
-        col_af1, col_af2 = st.columns([3, 1])
-        with col_af1:
-            db_feats = list(db.FEATURES_DB.keys())
-            chosen_feat = st.selectbox("Sélectionner dans le Compendium", db_feats, key="select_feature_add")
-        with col_af2:
-            st.write("")
-            st.write("")
-            if st.button("Ajouter", key="btn_add_feat", use_container_width=True):
-                if chosen_feat not in char.traits_and_features:
-                    char.traits_and_features.append(chosen_feat)
-                    st.success(f"{chosen_feat} ajoutée !")
-                    st.rerun()
+    st.divider()
 
-        # Aptitude personnalisée
-        with st.popover("Ajouter une aptitude personnalisée"):
-            custom_f_name = st.text_input("Nom de l'aptitude")
-            custom_f_desc = st.text_area("Descriptif")
-            if st.button("Enregistrer aptitude personnalisée"):
-                if custom_f_name:
-                    char.traits_and_features.append(custom_f_name)
-                    db.FEATURES_DB[custom_f_name] = {
-                        "source": "Personnalisée",
-                        "type": "Spécial",
-                        "desc": custom_f_desc
-                    }
-                    st.rerun()
+    # Ajouter une aptitude
+    st.markdown("#### ➕ Ajouter une Aptitude depuis le Compendium")
+    col_af1, col_af2 = st.columns([3, 1])
+    with col_af1:
+        db_feats = list(db.FEATURES_DB.keys())
+        chosen_feat = st.selectbox("Sélectionner dans le catalogue", db_feats, key="select_feature_add")
+        f_info = db.FEATURES_DB[chosen_feat]
+        st.caption(f"Source : {f_info['source']} | Type : {f_info['type']}")
+    with col_af2:
+        st.write("")
+        st.write("")
+        if st.button("✨ Ajouter Aptitude", key="btn_add_feat", use_container_width=True):
+            if chosen_feat not in char.traits_and_features:
+                char.traits_and_features.append(chosen_feat)
+                st.success(f"{chosen_feat} ajoutée !")
+                st.rerun()
 
-    # 2. Onglet Compétences
-    with tab_comp:
+    # Aptitude personnalisée
+    with st.expander("Créer une aptitude personnalisée sur-mesure"):
+        custom_f_name = st.text_input("Nom de l'aptitude")
+        custom_f_source = st.text_input("Source", value="Personnalisée")
+        custom_f_type = st.text_input("Type", value="Action / Spécial")
+        custom_f_desc = st.text_area("Descriptif complet")
+        if st.button("Enregistrer cette aptitude sur-mesure"):
+            if custom_f_name:
+                char.traits_and_features.append(custom_f_name)
+                db.FEATURES_DB[custom_f_name] = {
+                    "source": custom_f_source,
+                    "type": custom_f_type,
+                    "desc": custom_f_desc
+                }
+                st.success(f"Aptitude {custom_f_name} créée et ajoutée !")
+                st.rerun()
+
+
+# ------------------------------------------------------------------------------
+# ONGLET 4 : COMPÉTENCES & SAUVEGARDES
+# ------------------------------------------------------------------------------
+with tab_skills:
+    st.markdown("### 📜 Maîtrises, Compétences & Sauvegardes")
+    
+    col_sk_left, col_sk_right = st.columns([6, 4])
+
+    with col_sk_left:
+        st.markdown("#### 🎯 Compétences")
         data_skills = []
         for sk_name, ab in SKILL_ABILITY_MAP.items():
             mod = char.get_skill_modifier(sk_name)
@@ -1178,18 +1256,24 @@ with col_right:
                 "Compétence": sk_name,
                 "Carac": ab.name,
                 "Bonus": f"+{mod}" if mod >= 0 else f"{mod}",
-                "Maîtrise": badge
+                "Statut": badge
             })
         df_skills = pd.DataFrame(data_skills)
-        st.dataframe(df_skills, hide_index=True, use_container_width=True, height=450)
+        st.dataframe(df_skills, hide_index=True, use_container_width=True, height=520)
 
-    # 3. Onglet Sauvegardes
-    with tab_sauv:
+    with col_sk_right:
+        st.markdown("#### 🛡️ Jets de Sauvegarde")
         for ab in Ability:
             st_mod = char.get_saving_throw(ab)
             is_prof = ab in char.saving_throw_proficiencies
             mark = "🛡️ **Maîtrisé**" if is_prof else "—"
-            st.write(f"**{ab.value}** ({ab.name}) : **{'+' if st_mod >= 0 else ''}{st_mod}** | {mark}")
+            st_val = f"+{st_mod}" if st_mod >= 0 else f"{st_mod}"
+            st.markdown(f"""
+            <div style="background: rgba(0,0,0,0.25); padding: 8px 12px; border-radius: 6px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                <span><b>{ab.value}</b> ({ab.name})</span>
+                <span style="color: {theme['accent']}; font-weight: bold; font-size: 1.15rem;">{st_val} <small style="color: #aaa;">| {mark}</small></span>
+            </div>
+            """, unsafe_allow_html=True)
 
 
 # ==============================================================================

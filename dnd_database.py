@@ -471,13 +471,46 @@ def get_total_hit_dice(classes: dict) -> dict:
 
 def calculate_spell_slots(classes: dict) -> dict:
     """
-    Calcule les emplacements de sorts du personnage selon les règles multi-classes de D&D 5e.
+    Calcule les emplacements de sorts du personnage selon les règles de D&D 5e.
+    Gère les lanceurs complets, demi-lanceurs (Paladin, Rôdeur), Artificier et multiclassage.
     Retourne un dictionnaire {niveau_sort: nombre_emplacements}.
     """
-    # 1. Calcul du niveau de lanceur de sort combiné
     full_casters = ["Barde", "Clerc", "Druide", "Ensorceleur", "Magicien"]
     half_casters = ["Paladin", "Rôdeur"]
     
+    # Table spécifique demi-lanceur (Rôdeur / Paladin)
+    half_caster_table = {
+        2: {1: 2},
+        3: {1: 3},
+        4: {1: 3},
+        5: {1: 4, 2: 2},
+        6: {1: 4, 2: 2},
+        7: {1: 4, 2: 3},
+        8: {1: 4, 2: 3},
+        9: {1: 4, 2: 3, 3: 2},
+        10: {1: 4, 2: 3, 3: 2},
+        11: {1: 4, 2: 3, 3: 3},
+        12: {1: 4, 2: 3, 3: 3},
+        13: {1: 4, 2: 3, 3: 3, 4: 1},
+        14: {1: 4, 2: 3, 3: 3, 4: 1},
+        15: {1: 4, 2: 3, 3: 3, 4: 2},
+        16: {1: 4, 2: 3, 3: 3, 4: 2},
+        17: {1: 4, 2: 3, 3: 3, 4: 3, 5: 1},
+        18: {1: 4, 2: 3, 3: 3, 4: 3, 5: 1},
+        19: {1: 4, 2: 3, 3: 3, 4: 3, 5: 2},
+        20: {1: 4, 2: 3, 3: 3, 4: 3, 5: 2},
+    }
+
+    # Si le personnage n'a qu'une seule classe de lanceur et que c'est un demi-lanceur
+    active_half = [c for c in classes.keys() if c in half_casters]
+    active_full = [c for c in classes.keys() if c in full_casters]
+
+    if active_half and not active_full and "Artificier" not in classes:
+        # Cas pur demi-lanceur (ex: Rôdeur 5 / Roublard 2)
+        total_half_lvl = sum(classes[c] for c in active_half)
+        return half_caster_table.get(total_half_lvl, {1: 2} if total_half_lvl >= 2 else {})
+
+    # Sinon : calcul multiclasse standard
     caster_level = 0
     for cls, lvl in classes.items():
         if cls in full_casters:
@@ -487,7 +520,6 @@ def calculate_spell_slots(classes: dict) -> dict:
         elif cls == "Artificier":
             caster_level += (lvl + 1) // 2
 
-    # Table officielle multiclasse D&D 5e
     multiclass_table = {
         1: {1: 2},
         2: {1: 3},
