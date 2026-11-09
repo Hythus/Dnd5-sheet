@@ -194,3 +194,4 @@ def parse_pdf_character(file_bytes: bytes) -> Tuple[Dict[str, Any], str]:
         f"- Caractéristiques : FOR={extracted['raw_abilities'].get('STR', 10)}, DEX={extracted['raw_abilities'].get('DEX', 10)}, CON={extracted['raw_abilities'].get('CON', 10)}, INT={extracted['raw_abilities'].get('INT', 10)}, SAG={extracted['raw_abilities'].get('WIS', 10)}, CHA={extracted['raw_abilities'].get('CHA', 10)}"
     )
     return extracted, summary
+
