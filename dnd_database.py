@@ -363,6 +363,157 @@ FEATURES_DB = {
         "source": "Guerrier / Paladin / Rôdeur",
         "type": "Passif",
         "desc": "Vous adoptez un style de combat particulier : Archerie (+2 aux jets d'attaque à distance), Défense (+1 CA quand vous portez une armure), Duelliste (+2 aux dégâts avec une arme à 1 main), ou Armes à deux mains (relance les 1 et 2 aux dés de dégâts)."
+    },
+    "Attaque Supplémentaire": {
+        "source": "Guerrier / Rôdeur / Paladin / Barbare / Moine Niv 5",
+        "type": "Passif de combat",
+        "desc": "Vous pouvez attaquer deux fois au lieu d'une lorsque vous choisissez l'action Attaquer durant votre tour (trois fois au niveau 11 de Guerrier, quatre fois au niveau 20)."
+    },
+    "Dérobade (Evasion)": {
+        "source": "Roublard / Moine Niv 7",
+        "type": "Passif de défense",
+        "desc": "Votre agilité instinctive vous permet d'esquiver certains effets de zone. Lorsque vous subissez un effet qui vous permet de faire un jet de sauvegarde de Dextérité pour ne subir que la moitié des dégâts (comme une boule de feu), vous ne subissez aucun dégât si vous réussissez votre jet, et seulement la moitié si vous échouez."
+    },
+    "Talent Fiable": {
+        "source": "Roublard Niv 11",
+        "type": "Passif d'expertise",
+        "desc": "Vous avez tellement affiné vos compétences que vous pouvez compter sur votre régularité. Dès que vous faites un test de caractéristique qui intègre votre bonus de maîtrise, vous pouvez traiter tout résultat de 9 ou moins au d20 comme étant un 10."
+    },
+    "Défense sans armure (Barbare)": {
+        "source": "Barbare Niv 1",
+        "type": "Passif",
+        "desc": "Tant que vous ne portez pas d'armure, votre classe d'armure est égale à 10 + modificateur de Dextérité + modificateur de Constitution. Vous pouvez utiliser un bouclier et continuer de bénéficier de cette aptitude."
+    },
+    "Attaque Téméraire (Reckless Attack)": {
+        "source": "Barbare Niv 2",
+        "type": "Attaque spéciale",
+        "desc": "À votre tour, quand vous faites votre première attaque, vous pouvez décider d'attaquer avec témérité. Vous bénéficiez d'un avantage sur tous vos jets d'attaque au corps à corps utilisant la Force durant ce tour, mais les jets d'attaque contre vous bénéficient également d'un avantage jusqu'au début de votre prochain tour."
+    },
+    "Touche-à-tout (Jack of all Trades)": {
+        "source": "Barde Niv 2",
+        "type": "Passif",
+        "desc": "Vous pouvez ajouter la moitié de votre bonus de maîtrise (arrondi à l'inférieur) à n'importe quel test de caractéristique qui n'inclut pas déjà votre bonus de maîtrise."
+    },
+    "Chant de Repos": {
+        "source": "Barde Niv 2",
+        "type": "Repos court",
+        "desc": "Vous pouvez utiliser une musique ou des paroles apaisantes durant un repos court. Tout allié dépensant au moins un dé de vie pour récupérer des PV récupère 1d6 PV supplémentaires (1d8 au niv 9, 1d10 au niv 13, 1d12 au niv 17)."
+    },
+    "Source d'Inspiration": {
+        "source": "Barde Niv 5",
+        "type": "Recharge",
+        "desc": "Vous récupérez désormais toutes vos utilisations d'Inspiration Bardique après avoir terminé un repos court OU un repos long !"
+    },
+    "Destruction des Morts-Vivants": {
+        "source": "Clerc Niv 5",
+        "type": "Spécial",
+        "desc": "Quand un mort-vivant rate son jet de sauvegarde contre votre Renvoi des morts-vivants, la créature est instantanément détruite si son facteur de puissance (FP) est inférieur ou égal à 1/2 (FP 1 au niv 8, FP 2 au niv 11...)."
+    },
+    "Indomptable": {
+        "source": "Guerrier Niv 9",
+        "type": "Jet de sauvegarde (Repos long)",
+        "desc": "Vous pouvez relancer un jet de sauvegarde que vous venez d'échouer. Vous devez utiliser le nouveau résultat. Utilisable 1 fois par repos long (2 fois au niv 13, 3 fois au niv 17)."
+    },
+    "Parade de Projectiles": {
+        "source": "Moine Niv 3",
+        "type": "Réaction",
+        "desc": "Vous pouvez utiliser votre réaction pour dévier ou intercepter un projectile quand vous êtes touché par une attaque d'arme à distance. Les dégâts subis sont réduits de 1d10 + modificateur de Dextérité + votre niveau de moine. Si les dégâts tombent à 0, vous pouvez attraper le projectile et le renvoyer !"
+    },
+    "Chute Ralentie": {
+        "source": "Moine Niv 4",
+        "type": "Réaction",
+        "desc": "Vous pouvez utiliser votre réaction quand vous tombez pour réduire les dégâts de chute que vous subissez d'une valeur égale à 5 fois votre niveau de moine."
+    },
+    "Frappe Étourdissante": {
+        "source": "Moine Niv 5",
+        "type": "Frappe martiale",
+        "desc": "Quand vous touchez une créature avec une attaque d'arme au corps à corps, vous pouvez dépenser 1 point de Ki pour tenter d'étourdir la cible. Elle doit réussir une sauvegarde de Constitution ou être étourdie jusqu'à la fin de votre prochain tour."
+    },
+    "Invocations Occultes": {
+        "source": "Occultiste Niv 2",
+        "type": "Magie occulte",
+        "desc": "Dans vos études des connaissances occultes, vous avez déterré des invocations mystiques qui vous confèrent des capacités magiques permanentes (Armure d'ombres, Décharge déchirante, Yeux du gardien runique...)."
+    },
+    "Don du Pacte": {
+        "source": "Occultiste Niv 3",
+        "type": "Pacte de classe",
+        "desc": "Votre patron céleste, féerique ou démoniaque vous octroie une faveur : le Pacte de la Lame (arme magique invocable), le Pacte du Tome (grimoire d'ombres) ou le Pacte de la Chaîne (familier supérieur)."
+    },
+    "Aura de Protection": {
+        "source": "Paladin Niv 6",
+        "type": "Aura de soutien",
+        "desc": "Dès qu'un jet de sauvegarde est nécessaire pour vous ou pour une créature amicale située à 3 mètres de vous, la créature gagne un bonus au jet de sauvegarde égal à votre modificateur de Charisme (minimum +1)."
+    },
+    "Explorateur-Né": {
+        "source": "Rôdeur Niv 1",
+        "type": "Exploration",
+        "desc": "Vous êtes particulièrement familier avec un type d'environnement naturel (Forêt, Marais, Montagne...). Vous ignorez le terrain difficile pour votre groupe, ne pouvez vous perdre que par magie et restez alerte même en cueillant ou pistant."
+    },
+    "Foulée Terrestre": {
+        "source": "Rôdeur Niv 8",
+        "type": "Déplacement",
+        "desc": "Se déplacer sur un terrain difficile non magique ne vous coûte aucun mouvement supplémentaire. Vous traversez également les plantes non magiques sans subir de ralentissement ni de dégâts."
+    },
+    "Jargon des Voleurs": {
+        "source": "Roublard Niv 1",
+        "type": "Secret / RP",
+        "desc": "Mélange de dialecte, d'argot et de signes secrets qui vous permet de cacher des messages dans une conversation apparemment normale."
+    },
+    "Expertise": {
+        "source": "Roublard / Barde",
+        "type": "Maîtrise améliorée",
+        "desc": "Votre bonus de maîtrise est doublé pour tout test de caractéristique qui fait appel aux compétences ou outils choisis (ex: Discrétion, Perception, Escamotage)."
+    },
+    "Bricolage Magique": {
+        "source": "Artificier Niv 1",
+        "type": "Artisanat",
+        "desc": "Vous apprenez comment investir une étincelle de magie dans des objets ordinaires pour leur faire émettre de la lumière, un son enregistré, une odeur ou un message visuel."
+    },
+    "Outilleur Polyvalent": {
+        "source": "Artificier Niv 3",
+        "type": "Artisanat",
+        "desc": "Vous pouvez créer par magie n'importe quel type d'outils d'artisan en 1 heure de travail ininterrompu."
+    },
+    "Trait de Génie": {
+        "source": "Artificier Niv 7",
+        "type": "Réaction",
+        "desc": "Quand vous ou une autre créature visible à 9m fait un test de caractéristique ou un jet de sauvegarde, vous pouvez utiliser votre réaction pour ajouter votre modificateur d'Intelligence au résultat."
+    },
+    # Sous-classes
+    "Mains Lestes (Fast Hands)": {
+        "source": "Roublard (Voleur Niv 3)",
+        "type": "Action bonus",
+        "desc": "Vous pouvez utiliser l'action bonus accordée par votre Ruse pour faire un test de Dextérité (Escamotage), utiliser vos outils de voleur pour désamorcer un piège ou crocheter une serrure, ou réaliser l'action Utiliser un objet."
+    },
+    "Cambrioleur (Second-Story Work)": {
+        "source": "Roublard (Voleur Niv 3)",
+        "type": "Mouvement",
+        "desc": "Vous gagnez la capacité d'escalader plus rapidement que la normale : grimper ne vous coûte plus de mouvement supplémentaire. De plus, lorsque vous faites un saut en longueur avec élan, la distance que vous couvrez augmente d'un nombre de mètres égal à votre modificateur de Dextérité."
+    },
+    "Assassinat (Avantage & Critique surprise)": {
+        "source": "Roublard (Assassin Niv 3)",
+        "type": "Embuscade fatale",
+        "desc": "Vous avez l'avantage sur les jets d'attaque contre toute créature qui n'a pas encore agi durant le combat. De plus, tout coup qui touche une créature que vous surprenez est automatiquement un coup critique !"
+    },
+    "Critique Amélioré (19-20)": {
+        "source": "Guerrier (Champion Niv 3)",
+        "type": "Combat",
+        "desc": "Vos attaques avec une arme obtiennent un coup critique sur un résultat de 19 ou 20 au dé à 20 faces."
+    },
+    "Supériorité Martiale": {
+        "source": "Guerrier (Maître de Guerre Niv 3)",
+        "type": "Manœuvres",
+        "desc": "Vous disposez de 4 dés de supériorité (d8) pour exécuter des manœuvres martiales spéciales (Riposte, Feinte, Balayage, Désarmement...). Rechargés après un repos court !"
+    },
+    "Frénésie": {
+        "source": "Barbare (Berserker Niv 3)",
+        "type": "Rage sauvage",
+        "desc": "Durant votre rage, vous pouvez entrer dans une frénésie sanguinaire. Vous pouvez effectuer une unique attaque d'arme au corps à corps par une action bonus à chacun de vos tours. Vous subissez 1 niveau d'épuisement à la fin de la rage."
+    },
+    "Esprit Totémique (Ours, Aigle ou Loup)": {
+        "source": "Barbare (Guerrier Totémique Niv 3)",
+        "type": "Totem",
+        "desc": "L'Ours vous confère la résistance à TOUS les dégâts sauf les dégâts psychiques durant votre rage. L'Aigle vous permet de foncer en action bonus et désavantage les attaques d'opportunité contre vous. Le Loup donne l'avantage aux attaques de mêlée de vos alliés."
     }
 }
 
@@ -570,4 +721,333 @@ def calculate_pact_slots(classes: dict) -> tuple[int, int]:
         return (3, 5)
     else:
         return (4, 5)
+
+# ------------------------------------------------------------------------------
+# 7. RÈGLES DE LANCER DE SORTS À PLUS HAUT NIVEAU (UPCASTING DYNAMIQUE)
+# ------------------------------------------------------------------------------
+
+SPELL_UPCAST_RULES = {
+    "Soin des blessures": {
+        "base_level": 1,
+        "format": lambda lvl: f"Restaure {lvl}d8 + Modificateur de sort PV à la créature touchée. (Lancé au Niveau {lvl} : +{lvl-1}d8)",
+    },
+    "Mot de guérison": {
+        "base_level": 1,
+        "format": lambda lvl: f"Restaure {lvl}d4 + Modificateur de sort PV à distance par action bonus. (Lancé au Niveau {lvl} : +{lvl-1}d4)",
+    },
+    "Projectile magique": {
+        "base_level": 1,
+        "format": lambda lvl: f"Crée {lvl + 2} fléchettes d'énergie touchant automatiquement pour {lvl + 2}d4+{lvl + 2} dégâts de force (1d4+1 chacune). (Lancé au Niveau {lvl} : +{lvl-1} fléchette(s))",
+    },
+    "Grêle d'Épines": {
+        "base_level": 1,
+        "format": lambda lvl: f"La prochaine attaque à distance déclenche une pluie d'épines infligeant {min(6, lvl)}d10 dégâts perforants en zone. (Lancé au Niveau {lvl})",
+    },
+    "Fracassement (Shatter)": {
+        "base_level": 2,
+        "format": lambda lvl: f"Bruit assourdissant infligeant {3 + (lvl - 2)}d8 dégâts de tonnerre en zone (sauvegarde CON pour moitié). (Lancé au Niveau {lvl} : +{lvl-2}d8)",
+    },
+    "Rayon ardent (Scorching Ray)": {
+        "base_level": 2,
+        "format": lambda lvl: f"Lance {3 + (lvl - 2)} rayons de feu distincts infligeant chacun 2d6 dégâts de feu (soit {(3 + (lvl - 2)) * 2}d6 au total). (Lancé au Niveau {lvl} : +{lvl-2} rayon(s))",
+    },
+    "Esprit Guérisseur (Healing Spirit)": {
+        "base_level": 2,
+        "format": lambda lvl: f"Invoque un esprit féerique. Chaque passage soigne {1 + (lvl - 2)}d6 PV. (Lancé au Niveau {lvl} : +{lvl-2}d6 de soin)",
+    },
+    "Boule de feu (Fireball)": {
+        "base_level": 3,
+        "format": lambda lvl: f"Explosion ardente dans un rayon de 6m infligeant {8 + (lvl - 3)}d6 dégâts de feu (sauvegarde DEX pour moitié). (Lancé au Niveau {lvl} : +{lvl-3}d6)",
+    },
+    "Éclair (Lightning Bolt)": {
+        "base_level": 3,
+        "format": lambda lvl: f"Ligne de foudre de 30m infligeant {8 + (lvl - 3)}d6 dégâts de foudre (sauvegarde DEX pour moitié). (Lancé au Niveau {lvl} : +{lvl-3}d6)",
+    },
+    "Esprits Gardiens": {
+        "base_level": 3,
+        "format": lambda lvl: f"Esprits protecteurs infligeant {3 + (lvl - 3)}d8 dégâts radiants ou nécrotiques et réduisant la vitesse de moitié. (Lancé au Niveau {lvl} : +{lvl-3}d8)",
+    },
+    "Cône de froid": {
+        "base_level": 5,
+        "format": lambda lvl: f"Souffle glacial infligeant {8 + (lvl - 5)}d8 dégâts de froid dans un cône de 18m. (Lancé au Niveau {lvl} : +{lvl-5}d8)",
+    },
+    "Soins de masse": {
+        "base_level": 5,
+        "format": lambda lvl: f"Restaure {3 + (lvl - 5)}d8 + Modificateur de sort à un maximum de six créatures. (Lancé au Niveau {lvl} : +{lvl-5}d8)",
+    }
+}
+
+def get_dynamic_spell_description(spell_name: str, cast_level: int) -> tuple[str, bool]:
+    """Retourne la description adaptée au niveau d'emplacement utilisé et un booléen indiquant si le sort est amplifié."""
+    meta = SPELLS_DB.get(spell_name, {})
+    base_level = meta.get("level", 1)
+    base_desc = meta.get("desc", "")
+    
+    rule = SPELL_UPCAST_RULES.get(spell_name)
+    if rule and cast_level > rule["base_level"]:
+        return rule["format"](cast_level), True
+    return base_desc, False
+
+# ------------------------------------------------------------------------------
+# 8. APTITUDES DYNAMIQUES & PROGRESSION SELON LE NIVEAU DE CLASSE
+# ------------------------------------------------------------------------------
+
+def get_dynamic_feature_info(feature_name: str, classes: dict) -> dict:
+    """
+    Calcule dynamiquement les dés de dégâts, soins, utilisations et bonus
+    d'une aptitude en fonction du niveau du personnage dans sa classe.
+    """
+    import math
+    base_feat = FEATURES_DB.get(feature_name, {
+        "source": "Aptitude",
+        "type": "Spécial",
+        "desc": f"Capacité : {feature_name}."
+    })
+    
+    # 1. Attaque Sournoise (Roublard)
+    if "attaque sournoise" in feature_name.lower():
+        rogue_lvl = classes.get("Roublard", 0)
+        dice_count = max(1, math.ceil(rogue_lvl / 2)) if rogue_lvl > 0 else 1
+        return {
+            "title": f"Attaque Sournoise (+{dice_count}d6)",
+            "source": f"Roublard Niv {rogue_lvl or 1}",
+            "type": "Attaque / Dégâts",
+            "desc": f"Une fois par tour, vous pouvez infliger **+{dice_count}d6** dégâts supplémentaires à une créature touchée avec une arme de finesse ou à distance si vous avez l'avantage au jet d'attaque (ou un allié à 1,5m sans désavantage). *(Calculé selon votre niveau {rogue_lvl} de Roublard)*."
+        }
+        
+    # 2. Second Souffle (Guerrier)
+    if "second souffle" in feature_name.lower():
+        fighter_lvl = classes.get("Guerrier", 0)
+        return {
+            "title": f"Second Souffle (1d10 + {fighter_lvl} PV)",
+            "source": f"Guerrier Niv {fighter_lvl or 1}",
+            "type": "Action Bonus (Repos court)",
+            "desc": f"Par une action bonus à votre tour, récupérez **1d10 + {fighter_lvl}** PV. Utilisable 1 fois par repos court ou long."
+        }
+        
+    # 3. Sursaut d'Activité (Guerrier)
+    if "sursaut" in feature_name.lower():
+        fighter_lvl = classes.get("Guerrier", 0)
+        uses = 2 if fighter_lvl >= 17 else 1
+        return {
+            "title": f"Sursaut d'Activité ({uses} util./repos court)",
+            "source": f"Guerrier Niv {fighter_lvl or 1}",
+            "type": "Spécial (Repos court)",
+            "desc": f"Effectuez 1 action supplémentaire durant votre tour. Utilisable **{uses} fois** par repos court ou long."
+        }
+
+    # 4. Rage Barbare
+    if "rage" in feature_name.lower():
+        barb_lvl = classes.get("Barbare", 0)
+        bonus = 4 if barb_lvl >= 16 else (3 if barb_lvl >= 9 else 2)
+        rages = "Illimité" if barb_lvl >= 20 else (6 if barb_lvl >= 17 else (5 if barb_lvl >= 12 else (4 if barb_lvl >= 6 else (3 if barb_lvl >= 3 else 2))))
+        return {
+            "title": f"Rage Barbare (+{bonus} dégâts • {rages} rages/jour)",
+            "source": f"Barbare Niv {barb_lvl or 1}",
+            "type": "Action Bonus",
+            "desc": f"En combat, vous entrez dans une rage dévastatrice : avantage aux jets et sauvegardes de Force, **+{bonus}** aux dégâts au corps à corps avec la Force, et résistance aux dégâts contondants, perforants et tranchants. Nombre d'utilisations : **{rages} par jour**."
+        }
+
+    # 5. Imposition des Mains (Paladin)
+    if "imposition des mains" in feature_name.lower():
+        pal_lvl = classes.get("Paladin", 0)
+        pool = pal_lvl * 5
+        return {
+            "title": f"Imposition des Mains (Réserve : {pool} PV)",
+            "source": f"Paladin Niv {pal_lvl or 1}",
+            "type": "Action de soin",
+            "desc": f"Vous disposez d'une réserve de soins magiques égale à **{pool} PV** (Paladin Niv {pal_lvl} x 5). Vous pouvez également dépenser 5 PV de la réserve pour soigner une maladie ou neutraliser un poison."
+        }
+
+    # 6. Inspiration Bardique
+    if "inspiration bardique" in feature_name.lower():
+        bard_lvl = classes.get("Barde", 0)
+        die = "d12" if bard_lvl >= 15 else ("d10" if bard_lvl >= 10 else ("d8" if bard_lvl >= 5 else "d6"))
+        rest_recharge = "repos court ou long" if bard_lvl >= 5 else "repos long"
+        return {
+            "title": f"Inspiration Bardique (Dé : {die})",
+            "source": f"Barde Niv {bard_lvl or 1}",
+            "type": "Action Bonus",
+            "desc": f"Par une action bonus, donnez un dé d'inspiration **{die}** à un allié à 18m. Il pourra l'ajouter à un jet d'attaque, test de carac ou jet de sauvegarde dans les 10 min. Rechargeable par **{rest_recharge}**."
+        }
+
+    # 7. Points de Ki & Arts Martiaux (Moine)
+    if "points de ki" in feature_name.lower() or "arts martiaux" in feature_name.lower():
+        monk_lvl = classes.get("Moine", 0)
+        die = "1d10" if monk_lvl >= 17 else ("1d8" if monk_lvl >= 11 else ("1d6" if monk_lvl >= 5 else "1d4"))
+        return {
+            "title": f"Points de Ki ({monk_lvl} pts) & Arts Martiaux ({die})",
+            "source": f"Moine Niv {monk_lvl or 1}",
+            "type": "Ressource martiale",
+            "desc": f"Vous disposez de **{monk_lvl} points de Ki** (rechargeables sur repos court). Vos attaques à mains nues infligent **{die}** et vous pouvez attaquer en action bonus."
+        }
+
+    # 8. Restauration Arcanique (Magicien)
+    if "restauration arcanique" in feature_name.lower():
+        wiz_lvl = classes.get("Magicien", 0)
+        max_slots = max(1, math.ceil(wiz_lvl / 2))
+        return {
+            "title": f"Restauration Arcanique (Max combiné : Niv {max_slots})",
+            "source": f"Magicien Niv {wiz_lvl or 1}",
+            "type": "Repos court (1/jour)",
+            "desc": f"Lors d'un repos court une fois par jour, récupérez des emplacements de sorts dépensés dont la somme des niveaux est inférieure ou égale à **{max_slots}** (aucun emplacement de niveau 6+)."
+        }
+
+    # 9. Infusions d'Artificier
+    if "infusions" in feature_name.lower():
+        art_lvl = classes.get("Artificier", 0)
+        known = 8 if art_lvl >= 18 else (7 if art_lvl >= 14 else (6 if art_lvl >= 10 else (5 if art_lvl >= 6 else 4)))
+        active = 6 if art_lvl >= 18 else (5 if art_lvl >= 14 else (4 if art_lvl >= 10 else (3 if art_lvl >= 6 else 2)))
+        return {
+            "title": f"Infusions d'Artificier ({active} actives / {known} connues)",
+            "source": f"Artificier Niv {art_lvl or 1}",
+            "type": "Artisanat magique",
+            "desc": f"Vous connaissez **{known}** formules d'infusions et pouvez maintenir **{active}** objets infusés simultanément."
+        }
+
+    return {
+        "title": feature_name,
+        "source": base_feat["source"],
+        "type": base_feat["type"],
+        "desc": base_feat["desc"]
+    }
+
+# ------------------------------------------------------------------------------
+# 9. PROGRESSION OFFICIELLE DES APTITUDES PAR CLASSE ET SOUS-CLASSE
+# ------------------------------------------------------------------------------
+
+CLASS_LEVEL_PROGRESSION = {
+    "Barbare": {
+        1: ["Rage Barbare", "Défense sans armure (Barbare)"],
+        2: ["Sens du Danger (Danger Sense)", "Attaque Téméraire (Reckless Attack)"],
+        5: ["Attaque Supplémentaire"],
+    },
+    "Barde": {
+        1: ["Inspiration Bardique"],
+        2: ["Touche-à-tout (Jack of all Trades)", "Chant de Repos"],
+        3: ["Expertise"],
+        5: ["Source d'Inspiration"],
+    },
+    "Clerc": {
+        2: ["Canalisation d'Énergie Divine"],
+        5: ["Destruction des Morts-Vivants"],
+    },
+    "Druide": {
+        2: ["Forme Sauvage (Wild Shape)"],
+    },
+    "Ensorceleur": {
+        3: ["Métamagie & Points de Sorcellerie"],
+    },
+    "Guerrier": {
+        1: ["Second Souffle (Second Wind)", "Style de Combat"],
+        2: ["Sursaut d'Activité (Action Surge)"],
+        5: ["Attaque Supplémentaire"],
+        9: ["Indomptable"],
+    },
+    "Magicien": {
+        1: ["Restauration Arcanique (Arcane Recovery)"],
+    },
+    "Moine": {
+        2: ["Points de Ki & Arts Martiaux"],
+        3: ["Parade de Projectiles"],
+        4: ["Chute Ralentie"],
+        5: ["Attaque Supplémentaire", "Frappe Étourdissante"],
+        7: ["Dérobade (Evasion)"],
+    },
+    "Occultiste": {
+        1: ["Magie de Pacte (Pact Magic)"],
+        2: ["Invocations Occultes"],
+        3: ["Don du Pacte"],
+    },
+    "Paladin": {
+        1: ["Imposition des Mains (Lay on Hands)"],
+        2: ["Style de Combat", "Châtiment Divin (Divine Smite)"],
+        3: ["Canalisation d'Énergie Divine"],
+        5: ["Attaque Supplémentaire"],
+        6: ["Aura de Protection"],
+    },
+    "Rôdeur": {
+        1: ["Ennemi Juré (Favored Enemy)", "Explorateur-Né"],
+        2: ["Style de Combat"],
+        3: ["Vigilance Primitive (Primeval Awareness)"],
+        5: ["Attaque Supplémentaire"],
+        8: ["Foulée Terrestre"],
+    },
+    "Roublard": {
+        1: ["Attaque Sournoise (Sneak Attack)", "Jargon des Voleurs", "Expertise"],
+        2: ["Ruse (Cunning Action)"],
+        5: ["Échappatoire (Uncanny Dodge)"],
+        7: ["Dérobade (Evasion)"],
+        11: ["Talent Fiable"],
+    },
+    "Artificier": {
+        1: ["Bricolage Magique"],
+        2: ["Infusions d'Artificier"],
+        3: ["Outilleur Polyvalent"],
+        7: ["Trait de Génie"],
+    }
+}
+
+SUBCLASS_LEVEL_PROGRESSION = {
+    # Rôdeur
+    "Tueur de Monstres": {
+        3: ["Sens du Chasseur (Hunter's Sense)", "Proie du Tueur (Slayer's Prey)"],
+    },
+    # Roublard
+    "Voleur": {
+        3: ["Mains Lestes (Fast Hands)", "Cambrioleur (Second-Story Work)"],
+    },
+    "Assassin": {
+        3: ["Assassinat (Avantage & Critique surprise)"],
+    },
+    # Guerrier
+    "Champion": {
+        3: ["Critique Amélioré (19-20)"],
+    },
+    "Maître de Guerre": {
+        3: ["Supériorité Martiale"],
+    },
+    # Barbare
+    "Berserker": {
+        3: ["Frénésie"],
+    },
+    "Guerrier Totémique": {
+        3: ["Esprit Totémique (Ours, Aigle ou Loup)"],
+    }
+}
+
+def sync_character_features(classes: dict, subclasses: dict, current_features: list) -> tuple[list, list]:
+    """
+    Synchronise les aptitudes officielles débloquées selon les niveaux et sous-classes du personnage.
+    Retourne (liste_mise_à_jour, liste_nouvelles_aptitudes).
+    """
+    updated = list(current_features)
+    added = []
+
+    for cls_name, lvl in classes.items():
+        # Aptitudes de classe
+        prog = CLASS_LEVEL_PROGRESSION.get(cls_name, {})
+        for req_lvl, feats in prog.items():
+            if lvl >= req_lvl:
+                for f in feats:
+                    if f and not any(f.lower() in ex.lower() or ex.lower() in f.lower() for ex in updated):
+                        updated.append(f)
+                        added.append(f)
+
+        # Aptitudes de sous-classe (uniquement si niveau >= 3)
+        if lvl >= 3:
+            sub_name = subclasses.get(cls_name, "")
+            if sub_name:
+                for sub_key, sub_prog in SUBCLASS_LEVEL_PROGRESSION.items():
+                    if sub_key.lower() in sub_name.lower():
+                        for req_lvl, feats in sub_prog.items():
+                            if lvl >= req_lvl:
+                                for f in feats:
+                                    if f and not any(f.lower() in ex.lower() or ex.lower() in f.lower() for ex in updated):
+                                        updated.append(f)
+                                        added.append(f)
+                        break
+
+    return updated, added
+
 

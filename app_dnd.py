@@ -588,22 +588,28 @@ with st.sidebar:
 
         st.divider()
         st.subheader("Classes & Sous-Classes")
+        level_changed = False
         for cls_name in list(char.classes.keys()):
             col_c1, col_c2, col_c3 = st.columns([3, 2, 1])
             with col_c1:
                 st.write(f"**{cls_name}**")
             with col_c2:
-                char.classes[cls_name] = st.number_input(f"Niv {cls_name}", min_value=1, max_value=20, value=char.classes[cls_name], key=f"lvl_{cls_name}", label_visibility="collapsed")
+                old_lvl = char.classes[cls_name]
+                new_lvl = st.number_input(f"Niv {cls_name}", min_value=1, max_value=20, value=old_lvl, key=f"lvl_{cls_name}", label_visibility="collapsed")
+                if new_lvl != old_lvl:
+                    char.classes[cls_name] = new_lvl
+                    level_changed = True
             with col_c3:
                 if len(char.classes) > 1:
                     if st.button("❌", key=f"del_{cls_name}", help=f"Retirer la classe {cls_name}"):
                         del char.classes[cls_name]
                         if cls_name in char.subclasses:
                             del char.subclasses[cls_name]
+                        level_changed = True
                         st.rerun()
 
             # Règle officielle D&D 5e : Sous-classe débloquée au niveau 3
-            cls_level = char.classes[cls_name]
+            cls_level = char.classes.get(cls_name, 1)
             available_subs = db.CLASSES_DND.get(cls_name, {}).get("subclasses", [])
             if cls_level < 3:
                 st.info(f"🔒 **Sous-classe {cls_name}** : Accessible au **Niveau 3** (Actuel: Niv {cls_level})")
@@ -613,7 +619,21 @@ with st.sidebar:
                 current_sub = char.subclasses.get(cls_name, available_subs[0] if available_subs else "Aucune")
                 sub_idx = available_subs.index(current_sub) if current_sub in available_subs else 0
                 selected_sub = st.selectbox(f"Sous-classe ({cls_name})", available_subs, index=sub_idx, key=f"sub_{cls_name}")
-                char.subclasses[cls_name] = selected_sub
+                if selected_sub != current_sub:
+                    char.subclasses[cls_name] = selected_sub
+                    level_changed = True
+
+        # Synchronisation automatique des aptitudes lors de gains de niveau ou changement de sous-classe
+        if level_changed:
+            updated_feats, added_feats = db.sync_character_features(char.classes, char.subclasses, char.traits_and_features)
+            char.traits_and_features = updated_feats
+            if added_feats:
+                st.session_state["toast_msg"] = f"🎉 Niveau supérieur ! Nouvelles aptitudes débloquées : {', '.join(added_feats)}"
+            st.rerun()
+
+        # Affichage de la notification si présente
+        if "toast_msg" in st.session_state:
+            st.toast(st.session_state.pop("toast_msg"))
 
         # Ajouter une nouvelle classe
         new_classes_avail = [c for c in db.CLASSES_DND.keys() if c not in char.classes]
@@ -625,6 +645,8 @@ with st.sidebar:
                     # Au niveau 1, pas de sous-classe (débloquée au niveau 3)
                     if new_cls in char.subclasses:
                         del char.subclasses[new_cls]
+                    updated_feats, _ = db.sync_character_features(char.classes, char.subclasses, char.traits_and_features)
+                    char.traits_and_features = updated_feats
                     st.rerun()
 
         st.write("")
@@ -1096,40 +1118,89 @@ with tab_grimoire:
     if char.known_spells:
         for s_idx, sp in enumerate(char.known_spells):
             col_sp_card, col_sp_act = st.columns([7, 3])
+            
+            # Détermination des niveaux d'emplacements utilisables
+            available_cast_levels = []
+            if sp.level > 0:
+                # Niveaux d'emplacements standards disponibles
+                for lvl_cand in sorted(slots_max.keys()):
+                    if lvl_cand >= sp.level:
+                        avail_cnt = slots_max[lvl_cand] - char.spell_slots_used.get(lvl_cand, 0)
+                        available_cast_levels.append((lvl_cand, "standard", avail_cnt))
+                # Magie de Pacte (Occultiste)
+                if pact_slots_cnt > 0 and pact_slots_lvl >= sp.level:
+                    avail_pact_cnt = pact_slots_cnt - char.pact_slots_used
+                    available_cast_levels.append((pact_slots_lvl, "pacte", avail_pact_cnt))
+
+            with col_sp_act:
+                st.write("")
+                selected_cast_lvl = sp.level
+                selected_slot_type = "standard"
+                can_cast = False
+
+                if sp.level == 0:
+                    st.caption("✨ Tour de magie (Illimité)")
+                    if st.button(f"✨ Lancer {sp.name}", key=f"cast_{s_idx}", use_container_width=True):
+                        st.success(f"Tour de magie {sp.name} incanté !")
+                else:
+                    if available_cast_levels:
+                        # Sélecteur de niveau d'emplacement pour le lancer (Upcasting)
+                        slot_options = []
+                        for lvl_c, s_type, cnt in available_cast_levels:
+                            type_label = "Pacte" if s_type == "pacte" else "Standard"
+                            slot_options.append((lvl_c, s_type, f"Niveau {lvl_c} ({type_label} : {cnt} dispo)"))
+
+                        chosen_tuple = st.selectbox(
+                            "Emplacement utilisé :",
+                            slot_options,
+                            format_func=lambda x: x[2],
+                            key=f"slot_choice_{s_idx}"
+                        )
+                        selected_cast_lvl = chosen_tuple[0]
+                        selected_slot_type = chosen_tuple[1]
+                        
+                        # Vérifier s'il reste des emplacements de ce type
+                        if selected_slot_type == "standard":
+                            avail_slots_now = slots_max.get(selected_cast_lvl, 0) - char.spell_slots_used.get(selected_cast_lvl, 0)
+                        else:
+                            avail_slots_now = pact_slots_cnt - char.pact_slots_used
+                        can_cast = (avail_slots_now > 0)
+
+                        if st.button(f"✨ Lancer (Niv {selected_cast_lvl})", key=f"cast_{s_idx}", disabled=not can_cast, use_container_width=True):
+                            if selected_slot_type == "standard":
+                                char.spell_slots_used[selected_cast_lvl] = char.spell_slots_used.get(selected_cast_lvl, 0) + 1
+                            else:
+                                char.pact_slots_used += 1
+                            st.success(f"Sort {sp.name} lancé avec succès avec un emplacement de Niveau {selected_cast_lvl} !")
+                            st.rerun()
+                    else:
+                        st.caption("🔒 Aucun emplacement de niveau suffisant")
+
+                if st.button("🗑️ Oublier ce sort", key=f"del_spell_{s_idx}", use_container_width=True):
+                    char.known_spells.pop(s_idx)
+                    st.rerun()
+
             with col_sp_card:
+                # Description dynamique avec upcasting selon l'emplacement sélectionné
+                dyn_desc, is_upcast = db.get_dynamic_spell_description(sp.name, selected_cast_lvl)
                 conc_badge = "🧠 [Concentration]" if sp.concentration else ""
+                upcast_badge = f"<span style='background: #e67e22; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 0.82rem; font-weight: bold;'>🚀 Amplifié au Niveau {selected_cast_lvl}</span>" if is_upcast else ""
+
                 st.markdown(f"""
                 <div class="card-combat">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 1.15rem; font-weight: bold; color: {theme['accent']};">{sp.name}</span>
-                        <span style="font-size: 0.9rem; color: #d4af37;">Niv {sp.level} • {sp.school} {conc_badge}</span>
+                        <span style="font-size: 1.15rem; font-weight: bold; color: {theme['accent']};">{sp.name} {upcast_badge}</span>
+                        <span style="font-size: 0.9rem; color: #d4af37;">Base : Niv {sp.level} • {sp.school} {conc_badge}</span>
                     </div>
                     <div style="color: #b5a895; font-size: 0.95rem; margin-top: 4px;">
                         ⏱️ <b>Incantation :</b> {sp.casting_time} | 📏 <b>Portée :</b> {sp.range_area} | ⏳ <b>Durée :</b> {sp.duration}
                     </div>
-                    <div style="color: #e0d5c1; margin-top: 6px; font-size: 1.02rem;">
-                        {sp.description}
+                    <div style="color: #e0d5c1; margin-top: 6px; font-size: 1.02rem; line-height: 1.45;">
+                        {dyn_desc}
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
-            with col_sp_act:
-                st.write("")
-                # Bouton pour lancer le sort (décompte un slot si niveau > 0)
-                if sp.level > 0:
-                    avail_normal = slots_max.get(sp.level, 0) - char.spell_slots_used.get(sp.level, 0)
-                    avail_pact_slots = (pact_slots_cnt - char.pact_slots_used) if pact_slots_cnt > 0 else 0
-                    has_slot = (avail_normal > 0) or (avail_pact_slots > 0)
-                    
-                    if st.button(f"✨ Lancer (Niv {sp.level})", key=f"cast_{s_idx}", disabled=not has_slot, use_container_width=True):
-                        if avail_normal > 0:
-                            char.spell_slots_used[sp.level] = char.spell_slots_used.get(sp.level, 0) + 1
-                        elif avail_pact_slots > 0:
-                            char.pact_slots_used += 1
-                        st.success(f"Sort {sp.name} incanté !")
-                        st.rerun()
-                if st.button("🗑️ Oublier ce sort", key=f"del_spell_{s_idx}", use_container_width=True):
-                    char.known_spells.pop(s_idx)
-                    st.rerun()
+
     else:
         st.info("Aucun sort dans votre grimoire pour le moment.")
 
@@ -1166,31 +1237,33 @@ with tab_grimoire:
 # ------------------------------------------------------------------------------
 with tab_traits:
     st.markdown("### ✨ Aptitudes de Classe & Capacités Spéciales")
-    st.caption("Consultez et déployez chaque aptitude pour afficher son descriptif complet officiel.")
+    st.caption("Aptitudes calculées et mises à l'échelle dynamiquement selon vos niveaux dans chaque classe.")
+
+    col_btn_sync, col_space = st.columns([4, 6])
+    with col_btn_sync:
+        if st.button("🔄 Synchroniser les aptitudes selon mes niveaux et sous-classes", use_container_width=True):
+            updated_f, added_f = db.sync_character_features(char.classes, char.subclasses, char.traits_and_features)
+            char.traits_and_features = updated_f
+            if added_f:
+                st.success(f"Aptitudes synchronisées ! Nouvelles aptitudes ajoutées : {', '.join(added_f)}")
+            else:
+                st.info("Toutes les aptitudes officielles correspondant à vos niveaux sont déjà présentes !")
+            st.rerun()
+
+    st.write("")
 
     if char.traits_and_features:
         for t_idx, tr_name in enumerate(char.traits_and_features):
-            # Cherche la correspondance dans FEATURES_DB
-            feature_info = None
-            for db_feat_name, data in db.FEATURES_DB.items():
-                if db_feat_name.lower() in tr_name.lower() or tr_name.lower() in db_feat_name.lower():
-                    feature_info = data
-                    break
+            # Calcul dynamique de l'aptitude selon les niveaux de classe
+            feature_info = db.get_dynamic_feature_info(tr_name, char.classes)
 
-            with st.expander(f"🌟 **{tr_name}**", expanded=True):
-                if feature_info:
-                    st.markdown(f"🏷️ **Source :** `{feature_info['source']}` | ⚡ **Type d'action :** `{feature_info['type']}`")
-                    st.markdown(f"""
-                    <div style='background: rgba(0,0,0,0.3); padding: 12px 16px; border-radius: 6px; border-left: 4px solid {theme['accent']}; font-size: 1.05rem; line-height: 1.5; color: #e8dcc6;'>
-                        {feature_info['desc']}
-                    </div>
-                    """, unsafe_allow_html=True)
-                else:
-                    st.markdown(f"""
-                    <div style='background: rgba(0,0,0,0.3); padding: 12px 16px; border-radius: 6px; font-size: 1.05rem;'>
-                        Aptitude issue de votre héritage, historique ou équipement : <b>{tr_name}</b>.
-                    </div>
-                    """, unsafe_allow_html=True)
+            with st.expander(f"🌟 **{feature_info['title']}**", expanded=True):
+                st.markdown(f"🏷️ **Source :** `{feature_info['source']}` | ⚡ **Type d'action :** `{feature_info['type']}`")
+                st.markdown(f"""
+                <div style='background: rgba(0,0,0,0.3); padding: 12px 16px; border-radius: 6px; border-left: 4px solid {theme['accent']}; font-size: 1.05rem; line-height: 1.5; color: #e8dcc6;'>
+                    {feature_info['desc']}
+                </div>
+                """, unsafe_allow_html=True)
                 
                 st.write("")
                 if st.button("🗑️ Retirer cette aptitude", key=f"del_feat_{t_idx}"):
