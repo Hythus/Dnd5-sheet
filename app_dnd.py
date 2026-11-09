@@ -803,8 +803,36 @@ with st.sidebar:
                             ]
                         if extracted_data.get("skill_proficiencies"):
                             char.skill_proficiencies = list(set(char.skill_proficiencies + extracted_data["skill_proficiencies"]))
+                        if extracted_data.get("weapons"):
+                            char.weapons = [
+                                Weapon(
+                                    name=w["name"],
+                                    damage_dice=w.get("damage_dice", "1d8"),
+                                    damage_type=w.get("damage_type", "tranchant"),
+                                    is_finesse=w.get("is_finesse", False),
+                                    is_ranged=w.get("is_ranged", False),
+                                    magic_bonus=w.get("magic_bonus", 0),
+                                    extra_damage_desc=w.get("extra_damage_desc", "")
+                                )
+                                for w in extracted_data["weapons"]
+                            ]
+                        if extracted_data.get("known_spells"):
+                            char.known_spells = [
+                                Spell(
+                                    name=s["name"],
+                                    level=s.get("level", 1),
+                                    school=s.get("school", "Évocation"),
+                                    casting_time=s.get("casting_time", "1 action"),
+                                    range_area=s.get("range_area", "18 m"),
+                                    duration=s.get("duration", "Instantanée"),
+                                    concentration=s.get("concentration", False),
+                                    description=s.get("description", "")
+                                )
+                                for s in extracted_data["known_spells"]
+                            ]
                         # Synchronisation automatique des aptitudes officielles selon classes et niveaux
-                        db.sync_character_features(char)
+                        updated_f, _ = db.sync_character_features(char.classes, char.subclasses, char.traits_and_features)
+                        char.traits_and_features = updated_f
                         st.success("Données du PDF injectées avec succès !")
                         st.rerun()
                 except Exception as e:
