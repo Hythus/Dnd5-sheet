@@ -349,65 +349,48 @@ class CharacterSheet:
         )
 
 # ==============================================================================
-# 3. INITIALISATION DU PERSONNAGE PAR DÉFAUT (HYTHUS)
+# 3. INITIALISATION DU PERSONNAGE PAR DÉFAUT (FICHE VIERGE)
 # ==============================================================================
 
 def get_default_character() -> CharacterSheet:
+    """Retourne une fiche de personnage vierge prête pour une nouvelle création."""
     char = CharacterSheet(
-        name="Hythus Feuille d'Argent",
-        race="Haut elfe",
-        background="Grand Voyageur",
-        alignment="Chaotique Neutre",
+        name="Nouvel Aventurier",
+        race="Humain",
+        background="Aventurier",
+        alignment="Neutre Pur",
         raw_abilities={
-            Ability.STR: 15,
-            Ability.DEX: 17,
-            Ability.CON: 12,
-            Ability.INT: 14,
-            Ability.WIS: 18,
-            Ability.CHA: 11,
+            Ability.STR: 10,
+            Ability.DEX: 10,
+            Ability.CON: 10,
+            Ability.INT: 10,
+            Ability.WIS: 10,
+            Ability.CHA: 10,
         },
-        classes={"Rôdeur": 5, "Roublard": 2},
-        # Rôdeur Niv 5 >= 3 (Sous-classe débloquée). Roublard Niv 2 < 3 (Sous-classe bloquée jusqu'au niveau 3).
-        subclasses={"Rôdeur": "Tueur de Monstres (XGtE)"},
-        saving_throw_proficiencies=[Ability.STR, Ability.DEX],
-        skill_proficiencies=[
-            "Acrobaties", "Athlétisme", "Discrétion", "Histoire",
-            "Intuition", "Investigation", "Nature", "Perception", "Survie"
-        ],
-        skill_expertises=["Discrétion", "Perception"],
+        classes={"Guerrier": 1},
+        subclasses={},
+        saving_throw_proficiencies=[Ability.STR, Ability.CON],
+        skill_proficiencies=[],
+        skill_expertises=[],
         traits_and_features=[
-            "Ennemi Juré (Favored Enemy)",
-            "Vigilance Primitive (Primeval Awareness)",
-            "Sens du Chasseur (Hunter's Sense)",
-            "Proie du Tueur (Slayer's Prey)",
-            "Attaque Sournoise (Sneak Attack)",
-            "Ruse (Cunning Action)",
-            "Transe & Ascendance Féérique",
-            "Vision dans le Noir (18m)"
+            "Second Souffle (Second Wind)",
+            "Style de Combat"
         ],
-        pv_max=52,
-        pv_current=52,
+        pv_max=10,
+        pv_current=10,
         pv_temp=0,
         speed=9
     )
     char.equipped_armor = Armor(
-        name="Armure de cuir clouté",
-        armor_type=ArmorType.LIGHT,
-        base_ac=12,
+        name="Tissu / Vêtements",
+        armor_type=ArmorType.NONE,
+        base_ac=10,
         magic_bonus=0,
     )
     char.weapons = [
-        Weapon(name="Arc long +1", damage_dice="1d8", damage_type="perforant", is_ranged=True, magic_bonus=1),
-        Weapon(name="Cimeterre", damage_dice="1d6", damage_type="tranchant", is_finesse=True),
-        Weapon(name="Coutille vicieuse", damage_dice="1d10", damage_type="tranchant", is_finesse=False, extra_damage_desc="+7 si critique"),
+        Weapon(name="Épée longue", damage_dice="1d8", damage_type="tranchant", is_finesse=False, is_ranged=False),
     ]
-    char.known_spells = [
-        Spell(name="Marque du Chasseur", level=1, casting_time="1 action bonus", duration="1 heure", concentration=True, description="+1d6 dégâts sur chaque frappe contre la cible et avantage pour la pister."),
-        Spell(name="Baie nourricière (Goodberry)", level=1, casting_time="1 action", duration="24 heures", description="Crée 10 baies restaurant 1 PV chacune."),
-        Spell(name="Grêle d'Épines", level=1, casting_time="1 action bonus", concentration=True, description="Explosion d'épines sur la prochaine attaque à distance (1d10 perforant)."),
-        Spell(name="Esprit Guérisseur (Healing Spirit)", level=2, casting_time="1 action bonus", concentration=True, duration="1 min", description="Invoque un esprit qui soigne 1d6 PV par passage."),
-        Spell(name="Zone de vérité", level=2, casting_time="1 action", duration="10 min", description="Les créatures ne peuvent proférer de mensonges délibérés."),
-    ]
+    char.known_spells = []
     return char
 
 if "char" not in st.session_state:
@@ -650,9 +633,19 @@ with st.sidebar:
                     st.rerun()
 
         st.write("")
-        if st.button("🔄 Réinitialiser la fiche (Défaut Hythus)", use_container_width=True):
-            st.session_state.char = get_default_character()
-            st.rerun()
+        col_rst1, col_rst2 = st.columns(2)
+        with col_rst1:
+            if st.button("📄 Fiche Vierge", use_container_width=True, help="Réinitialiser avec un modèle de fiche vierge"):
+                st.session_state.char = get_default_character()
+                st.rerun()
+        with col_rst2:
+            import os
+            if os.path.exists("hythus_feuille_d_argent.json"):
+                if st.button("🧝 Hythus (Exemple)", use_container_width=True, help="Charger la fiche d'exemple préremplie de Hythus"):
+                    with open("hythus_feuille_d_argent.json", "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                        st.session_state.char = CharacterSheet.from_dict(data)
+                    st.rerun()
 
     with tab_stats:
         st.subheader("Caractéristiques Brutes")
