@@ -514,6 +514,26 @@ FEATURES_DB = {
         "source": "Barbare (Guerrier Totémique Niv 3)",
         "type": "Totem",
         "desc": "L'Ours vous confère la résistance à TOUS les dégâts sauf les dégâts psychiques durant votre rage. L'Aigle vous permet de foncer en action bonus et désavantage les attaques d'opportunité contre vous. Le Loup donne l'avantage aux attaques de mêlée de vos alliés."
+    },
+    "Style de Combat : Archerie (+2 Attaque à distance)": {
+        "source": "Rôdeur / Guerrier",
+        "type": "Passif de combat",
+        "desc": "Vous gagnez un bonus de +2 aux jets d'attaque que vous effectuez avec une arme à distance (inclus dans le +9 de l'Arc long +1)."
+    },
+    "Charme d'Héroïsme": {
+        "source": "Don Surnaturel / Charme",
+        "type": "Action (Consommable unique)",
+        "desc": "Ce charme vous permet d'obtenir les avantages d'une potion d'héroïsme par une action (10 PV temporaires et effet du sort Bénédiction +1d4 aux attaques et sauvegardes pendant 1 heure sans concentration). Une fois utilisé, le charme disparaît."
+    },
+    "Tatouage de Préhension (+1 DEX)": {
+        "source": "Objet Magique / Tatouage",
+        "type": "Passif & Action",
+        "desc": "Tatouage magique d'aspect liane astrale : confère +1 à la valeur de Dextérité et permet de projeter des vrilles agrippantes à distance."
+    },
+    "Terre d'Adoption (Gisombre)": {
+        "source": "Historique / Lore Rôdeur",
+        "type": "Exploration & RP",
+        "desc": "Vous patrouilliez une forêt ancienne, au milieu des ténèbres et de la corruption se répandant depuis plusieurs passages menant dans le Gisombre. Vous trouvez votre ennemi juré fascinant et collectionnez des livres de contes et des histoires à son sujet."
     }
 }
 
@@ -778,11 +798,64 @@ def calculate_pact_slots(classes: dict) -> tuple[int, int]:
     else:
         return (4, 5)
 
-# ------------------------------------------------------------------------------
-# 7. RÈGLES DE LANCER DE SORTS À PLUS HAUT NIVEAU (UPCASTING DYNAMIQUE)
-# ------------------------------------------------------------------------------
+def get_spellcasting_stats(classes: dict, raw_abilities: dict, prof_bonus: int) -> dict:
+    """
+    Calcule les statistiques d'incantation du personnage (Classe, Caractéristique, DD de sauvegarde,
+    Bonus d'attaque de sort, et nombre de sorts à préparer).
+    """
+    import math
+    ability_labels = {
+        "STR": "Force", "DEX": "Dextérité", "CON": "Constitution",
+        "INT": "Intelligence", "WIS": "Sagesse", "CHA": "Charisme"
+    }
+    for cls_name, lvl in classes.items():
+        meta = CLASSES_DND.get(cls_name, {})
+        sc_ab = meta.get("spellcasting")
+        if sc_ab:
+            # Récupère le score brut (que les clés soient des Enum Ability ou des strings)
+            score = 10
+            for k, v in raw_abilities.items():
+                k_name = k.name if hasattr(k, "name") else str(k)
+                if k_name == sc_ab:
+                    score = v
+                    break
+            mod = math.floor((score - 10) / 2)
+            dc = 8 + prof_bonus + mod
+            atk = prof_bonus + mod
+            if cls_name == "Rôdeur":
+                prep = (1 + math.ceil(lvl / 2)) if lvl >= 2 else 0
+            elif cls_name in ["Paladin", "Artificier"]:
+                prep = max(1, mod + (lvl // 2))
+            else:
+                prep = max(1, mod + lvl)
+            return {
+                "has_spellcasting": True,
+                "caster_class": cls_name,
+                "ability_code": sc_ab,
+                "ability_name": ability_labels.get(sc_ab, sc_ab),
+                "ability_mod": mod,
+                "save_dc": dc,
+                "attack_bonus": atk,
+                "prepared_count": prep
+            }
+    return {"has_spellcasting": False}
+
+EXHAUSTION_EFFECTS = {
+    0: "Aucun effet d'épuisement.",
+    1: "Niveau 1 : Désavantage aux tests de caractéristique.",
+    2: "Niveau 2 : Vitesse réduite de moitié (+ Désavantage aux tests de carac).",
+    3: "Niveau 3 : Désavantage aux jets d'attaque et de sauvegarde (+ Vitesse / 2 et tests).",
+    4: "Niveau 4 : Maximum de points de vie réduit de moitié (+ effets précédents).",
+    5: "Niveau 5 : Vitesse réduite à 0 (+ effets précédents).",
+    6: "Niveau 6 : Mort."
+}
+
 
 SPELL_UPCAST_RULES = {
+    "Marque du Chasseur": {
+        "base_level": 1,
+        "format": lambda lvl: f"+1d6 dégâts sur chaque frappe contre la cible et avantage pour la pister. (Lancé au Niveau {lvl} : durée étendue à {'24 heures' if lvl >= 5 else ('8 heures' if lvl >= 3 else '1 heure')} !)",
+    },
     "Soin des blessures": {
         "base_level": 1,
         "format": lambda lvl: f"Restaure {lvl}d8 + Modificateur de sort PV à la créature touchée. (Lancé au Niveau {lvl} : +{lvl-1}d8)",

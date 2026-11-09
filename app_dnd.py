@@ -145,12 +145,33 @@ class CharacterSheet:
     pv_max: int = 52
     pv_current: int = 52
     pv_temp: int = 0
+    exhaustion: int = 0
     speed: int = 9
+    player_name: str = ""
+    xp: int = 0
     
     # Bourse et Inventaire
     currency: Dict[str, int] = field(default_factory=lambda: {"po": 0, "pa": 0, "pc": 0, "pe": 0, "pp": 0})
     inventory: List[Item] = field(default_factory=list)
     
+    # Profil, Roleplay, Apparence & Histoire (Pages 1 & 2 du PDF)
+    languages_and_proficiencies: str = ""
+    personality_traits: str = ""
+    ideals: str = ""
+    bonds: str = ""
+    flaws: str = ""
+    age: str = ""
+    height: str = ""
+    weight: str = ""
+    eyes: str = ""
+    skin: str = ""
+    hair: str = ""
+    appearance: str = ""
+    allies: str = ""
+    backstory: str = ""
+    treasure_notes: str = ""
+    additional_features_notes: str = ""
+
     # Gestion des ressources (Consommables)
     death_saves: Dict[str, int] = field(default_factory=lambda: {"successes": 0, "failures": 0})
     spell_slots_used: Dict[int, int] = field(default_factory=dict)
@@ -244,6 +265,8 @@ class CharacterSheet:
         """Convertit la fiche complète en dictionnaire sérialisable JSON."""
         return {
             "name": self.name,
+            "player_name": self.player_name,
+            "xp": self.xp,
             "race": self.race,
             "background": self.background,
             "alignment": self.alignment,
@@ -256,6 +279,7 @@ class CharacterSheet:
             "pv_max": self.pv_max,
             "pv_current": self.pv_current,
             "pv_temp": self.pv_temp,
+            "exhaustion": self.exhaustion,
             "speed": self.speed,
             "death_saves": self.death_saves,
             "spell_slots_used": {str(k): v for k, v in self.spell_slots_used.items()},
@@ -276,6 +300,22 @@ class CharacterSheet:
             "known_spells": [asdict(s) for s in self.known_spells],
             "currency": self.currency,
             "inventory": [asdict(i) for i in self.inventory],
+            "languages_and_proficiencies": self.languages_and_proficiencies,
+            "personality_traits": self.personality_traits,
+            "ideals": self.ideals,
+            "bonds": self.bonds,
+            "flaws": self.flaws,
+            "age": self.age,
+            "height": self.height,
+            "weight": self.weight,
+            "eyes": self.eyes,
+            "skin": self.skin,
+            "hair": self.hair,
+            "appearance": self.appearance,
+            "allies": self.allies,
+            "backstory": self.backstory,
+            "treasure_notes": self.treasure_notes,
+            "additional_features_notes": self.additional_features_notes,
         }
 
     @classmethod
@@ -306,6 +346,7 @@ class CharacterSheet:
                 is_finesse=w.get("is_finesse", False),
                 is_ranged=w.get("is_ranged", False),
                 magic_bonus=w.get("magic_bonus", 0),
+                attack_bonus_override=w.get("attack_bonus_override"),
                 extra_damage_desc=w.get("extra_damage_desc", "")
             )
             for w in data.get("weapons", [])
@@ -376,9 +417,11 @@ class CharacterSheet:
 
         return cls(
             name=data.get("name", "Héros Sans Nom"),
+            player_name=data.get("player_name", ""),
+            xp=int(data.get("xp", 0)),
             race=data.get("race", "Humain"),
             background=data.get("background", "Aventurier"),
-            alignment=data.get("alignment", "Neutre"),
+            alignment=data.get("alignment", "Neutre Pur"),
             raw_abilities=abilities,
             classes=data.get("classes", {"Guerrier": 1}),
             subclasses=data.get("subclasses", {}),
@@ -393,9 +436,26 @@ class CharacterSheet:
             pv_max=int(data.get("pv_max", 50)),
             pv_current=int(data.get("pv_current", 50)),
             pv_temp=int(data.get("pv_temp", 0)),
+            exhaustion=int(data.get("exhaustion", 0)),
             speed=int(data.get("speed", 9)),
             currency=currency,
             inventory=inventory,
+            languages_and_proficiencies=data.get("languages_and_proficiencies", ""),
+            personality_traits=data.get("personality_traits", ""),
+            ideals=data.get("ideals", ""),
+            bonds=data.get("bonds", ""),
+            flaws=data.get("flaws", ""),
+            age=data.get("age", ""),
+            height=data.get("height", ""),
+            weight=data.get("weight", ""),
+            eyes=data.get("eyes", ""),
+            skin=data.get("skin", ""),
+            hair=data.get("hair", ""),
+            appearance=data.get("appearance", ""),
+            allies=data.get("allies", ""),
+            backstory=data.get("backstory", ""),
+            treasure_notes=data.get("treasure_notes", ""),
+            additional_features_notes=data.get("additional_features_notes", ""),
             death_saves=data.get("death_saves", {"successes": 0, "failures": 0}),
             spell_slots_used=slots_used,
             pact_slots_used=int(data.get("pact_slots_used", 0)),
@@ -457,8 +517,27 @@ def get_default_character() -> CharacterSheet:
     char.known_spells = []
     return char
 
+def sync_session_state_from_char(c: CharacterSheet):
+    """
+    Synchronise toutes les clés de widgets Streamlit (sliders de caractéristiques, bourse, niveaux)
+    avec l'objet CharacterSheet afin d'éviter que les widgets n'écrasent les données nouvellement importées.
+    """
+    for ab in Ability:
+        st.session_state[f"slider_{ab.name}"] = c.raw_abilities.get(ab, 10)
+    for coin_k in ["pc", "pa", "pe", "po", "pp"]:
+        st.session_state[f"curr_{coin_k}"] = c.currency.get(coin_k, 0)
+    # Nettoie et met à jour les clés de classes et sous-classes
+    for k in list(st.session_state.keys()):
+        if k.startswith("lvl_") or k.startswith("sub_"):
+            del st.session_state[k]
+    for cls_n, lvl_v in c.classes.items():
+        st.session_state[f"lvl_{cls_n}"] = lvl_v
+    for cls_n, sub_v in c.subclasses.items():
+        st.session_state[f"sub_{cls_n}"] = sub_v
+
 if "char" not in st.session_state:
     st.session_state.char = get_default_character()
+    sync_session_state_from_char(st.session_state.char)
 
 char: CharacterSheet = st.session_state.char
 
@@ -629,6 +708,11 @@ with st.sidebar:
         char.name = st.text_input("Nom du Héros", value=char.name)
         char.race = st.text_input("Peuple / Race", value=char.race)
         char.background = st.text_input("Historique", value=char.background)
+        col_pl, col_xp = st.columns(2)
+        with col_pl:
+            char.player_name = st.text_input("Nom du Joueur", value=char.player_name)
+        with col_xp:
+            char.xp = st.number_input("Points d'XP", min_value=0, max_value=1000000, value=char.xp, step=100)
         
         aligns = ["Loyal Bon", "Neutre Bon", "Chaotique Bon", "Loyal Neutre", "Neutre Pur", "Chaotique Neutre", "Loyal Mauvais", "Neutre Mauvais", "Chaotique Mauvais"]
         char.alignment = st.selectbox("Alignement", aligns, index=aligns.index(char.alignment) if char.alignment in aligns else 5)
@@ -701,6 +785,7 @@ with st.sidebar:
         with col_rst1:
             if st.button("📄 Fiche Vierge", use_container_width=True, help="Réinitialiser avec un modèle de fiche vierge"):
                 st.session_state.char = get_default_character()
+                sync_session_state_from_char(st.session_state.char)
                 st.rerun()
         with col_rst2:
             import os
@@ -709,6 +794,7 @@ with st.sidebar:
                     with open("hythus_feuille_d_argent.json", "r", encoding="utf-8") as f:
                         data = json.load(f)
                         st.session_state.char = CharacterSheet.from_dict(data)
+                        sync_session_state_from_char(st.session_state.char)
                     st.rerun()
 
     with tab_stats:
@@ -762,6 +848,7 @@ with st.sidebar:
                     st.success("Fichier JSON valide !")
                     if st.button("Restaurer ce Héros depuis JSON"):
                         st.session_state.char = CharacterSheet.from_dict(data)
+                        sync_session_state_from_char(st.session_state.char)
                         st.rerun()
                 except Exception as e:
                     st.error(f"Erreur de lecture du JSON : {e}")
@@ -772,6 +859,8 @@ with st.sidebar:
                     if st.button("Appliquer les données du PDF à la fiche"):
                         char.name = extracted_data["name"]
                         char.race = extracted_data["race"]
+                        char.player_name = extracted_data.get("player_name", "")
+                        char.xp = extracted_data.get("xp", 0)
                         if extracted_data.get("background"):
                             char.background = extracted_data["background"]
                         if extracted_data.get("alignment"):
@@ -788,7 +877,23 @@ with st.sidebar:
                         char.pv_max = extracted_data["pv_max"]
                         char.pv_current = extracted_data["pv_current"]
                         char.pv_temp = extracted_data.get("pv_temp", 0)
+                        char.exhaustion = extracted_data.get("exhaustion", 0)
                         char.speed = extracted_data["speed"]
+                        if extracted_data.get("equipped_armor_name") and extracted_data["equipped_armor_name"] in db.ARMORS_DB:
+                            arm_n = extracted_data["equipped_armor_name"]
+                            arm_d = db.ARMORS_DB[arm_n]
+                            t_map = {
+                                "Légère": ArmorType.LIGHT,
+                                "Intermédiaire": ArmorType.MEDIUM,
+                                "Lourde": ArmorType.HEAVY,
+                                "Aucune": ArmorType.NONE
+                            }
+                            char.equipped_armor = Armor(
+                                name=arm_n,
+                                armor_type=t_map.get(arm_d["type"], ArmorType.NONE),
+                                base_ac=arm_d["base_ac"],
+                                max_dex_bonus=arm_d["max_dex"]
+                            )
                         if extracted_data.get("currency"):
                             char.currency = extracted_data["currency"]
                         if extracted_data.get("inventory"):
@@ -823,6 +928,7 @@ with st.sidebar:
                                     is_finesse=w.get("is_finesse", False),
                                     is_ranged=w.get("is_ranged", False),
                                     magic_bonus=w.get("magic_bonus", 0),
+                                    attack_bonus_override=w.get("attack_bonus_override"),
                                     extra_damage_desc=w.get("extra_damage_desc", "")
                                 )
                                 for w in extracted_data["weapons"]
@@ -841,9 +947,23 @@ with st.sidebar:
                                 )
                                 for s in extracted_data["known_spells"]
                             ]
-                        # Synchronisation automatique des aptitudes officielles selon classes et niveaux
-                        updated_f, _ = db.sync_character_features(char.classes, char.subclasses, char.traits_and_features)
+                        if "spell_slots_used" in extracted_data:
+                            char.spell_slots_used = extracted_data["spell_slots_used"]
+                        
+                        # Champs RP, Histoire & Apparence (Pages 1 & 2)
+                        for rp_key in [
+                            "languages_and_proficiencies", "personality_traits", "ideals", "bonds", "flaws",
+                            "age", "height", "weight", "eyes", "skin", "hair", "appearance",
+                            "allies", "backstory", "treasure_notes", "additional_features_notes"
+                        ]:
+                            if extracted_data.get(rp_key):
+                                setattr(char, rp_key, extracted_data[rp_key])
+
+                        # Synchronisation automatique des aptitudes officielles + aptitudes spéciales du PDF
+                        base_traits = list(extracted_data.get("traits", []))
+                        updated_f, _ = db.sync_character_features(char.classes, char.subclasses, base_traits)
                         char.traits_and_features = updated_f
+                        sync_session_state_from_char(char)
                         st.success("Données du PDF injectées avec succès !")
                         st.rerun()
                 except Exception as e:
@@ -870,12 +990,16 @@ for cls, lvl in char.classes.items():
     else:
         class_items.append(f"{cls} Niv {lvl}")
 class_summary_str = " / ".join(class_items)
+player_badge = f" • Joueur : <b>{char.player_name}</b>" if char.player_name else ""
+xp_badge = f" • XP : <b>{char.xp:,}</b>".replace(",", " ") if char.xp > 0 else ""
+exh_banner = f" <span style='background:#c0392b; color:#fff; padding:3px 10px; border-radius:4px; font-size:0.9rem;'>⚠️ Épuisement Niv {char.exhaustion}</span>" if char.exhaustion > 0 else ""
+
 st.markdown(f"""
 <div class="hero-banner">
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
         <div>
-            <h1 class="hero-title">{theme_icon} {char.name}</h1>
-            <div class="hero-sub">{char.race} • {class_summary_str} • {char.alignment} (Niveau Total {char.total_level})</div>
+            <h1 class="hero-title">{theme_icon} {char.name}{exh_banner}</h1>
+            <div class="hero-sub">{char.race} ({char.background}) • {class_summary_str} • {char.alignment} (Niveau Total {char.total_level}){player_badge}{xp_badge}</div>
         </div>
         <div style="text-align: right; margin-top: 10px;">
             <span style="font-size: 1.1rem; color: {theme['accent']}; font-style: italic;">{class_meta.get('theme', {}).get('quote', '« Que les dés soient favorables à ton destin. »')}</span>
@@ -1003,6 +1127,8 @@ with st.container():
             char.death_saves = {"successes": 0, "failures": 0}
             char.spell_slots_used = {}
             char.pact_slots_used = 0
+            if char.exhaustion > 0:
+                char.exhaustion = max(0, char.exhaustion - 1)
             
             # Récupère la moitié des dés de vie totaux
             total_dice_count = sum(total_hit_dice.values())
@@ -1016,8 +1142,21 @@ with st.container():
                 if recovered_allowance <= 0:
                     break
             
-            st.success("Repos long achevé ! PV restaurés au maximum, emplacements de sorts rechargés et dés de vie récupérés.")
+            st.success("Repos long achevé ! PV restaurés au maximum, emplacements de sorts rechargés, dés de vie récupérés (et -1 niveau d'épuisement).")
             st.rerun()
+
+        # Niveau d'Épuisement (Règles officielles D&D 5e)
+        new_exh = st.selectbox(
+            "🥵 Niveau d'Épuisement (0 à 6)",
+            options=[0, 1, 2, 3, 4, 5, 6],
+            index=min(6, max(0, char.exhaustion)),
+            format_func=lambda x: f"Niveau {x} — {db.EXHAUSTION_EFFECTS.get(x, '')}"
+        )
+        if new_exh != char.exhaustion:
+            char.exhaustion = new_exh
+            st.rerun()
+        if char.exhaustion > 0:
+            st.warning(f"⚠️ **{db.EXHAUSTION_EFFECTS.get(char.exhaustion, '')}**")
 
         # Repos Court avec dépense de dés de vie
         with st.expander("⏳ Prendre un Repos Court (1 heure)"):
@@ -1107,12 +1246,13 @@ st.divider()
 # 9. CORPS PRINCIPAL : ONGLETS DÉDIÉS EN PLEINE LARGEUR
 # ==============================================================================
 
-tab_arsenal, tab_inv, tab_grimoire, tab_traits, tab_skills = st.tabs([
+tab_arsenal, tab_inv, tab_grimoire, tab_traits, tab_skills, tab_lore = st.tabs([
     "⚔️ Arsenal & Combat",
     "🎒 Inventaire & Bourse",
     "🔮 Grimoire & Sorts",
     "✨ Aptitudes de Classe & Dons",
-    "📜 Compétences & Sauvegardes"
+    "📜 Compétences & Sauvegardes",
+    "📖 Histoire, RP & Détails"
 ])
 
 # ------------------------------------------------------------------------------
@@ -1377,6 +1517,22 @@ with tab_inv:
 with tab_grimoire:
     st.markdown("### 🔮 Grimoire & Magie")
 
+    # 0. En-tête d'Incantation (Caractéristique, DD de Sauvegarde, Bonus d'attaque de sort, Sorts à préparer)
+    sc_stats = db.get_spellcasting_stats(char.classes, char.raw_abilities, char.proficiency_bonus)
+    if sc_stats.get("has_spellcasting"):
+        sc_col1, sc_col2, sc_col3, sc_col4 = st.columns(4)
+        mod_sign = f"+{sc_stats['ability_mod']}" if sc_stats["ability_mod"] >= 0 else f"{sc_stats['ability_mod']}"
+        atk_sign = f"+{sc_stats['attack_bonus']}" if sc_stats["attack_bonus"] >= 0 else f"{sc_stats['attack_bonus']}"
+        with sc_col1:
+            st.markdown(f"""<div class="metric-shield"><div class="metric-value" style="font-size:1.35rem;">{sc_stats['caster_class']} ({sc_stats['ability_name']} {mod_sign})</div><div class="metric-label">Caractéristique d'Incantation</div></div>""", unsafe_allow_html=True)
+        with sc_col2:
+            st.markdown(f"""<div class="metric-shield"><div class="metric-value">🛡️ {sc_stats['save_dc']}</div><div class="metric-label">DD Sauvegarde des Sorts</div></div>""", unsafe_allow_html=True)
+        with sc_col3:
+            st.markdown(f"""<div class="metric-shield"><div class="metric-value">🎯 {atk_sign}</div><div class="metric-label">Bonus d'Attaque de Sort</div></div>""", unsafe_allow_html=True)
+        with sc_col4:
+            st.markdown(f"""<div class="metric-shield"><div class="metric-value">📖 {sc_stats['prepared_count']}</div><div class="metric-label">Sorts à Préparer</div></div>""", unsafe_allow_html=True)
+        st.write("")
+
     # 1. Emplacements de sorts
     slots_max = db.calculate_spell_slots(char.classes)
     pact_slots_cnt, pact_slots_lvl = db.calculate_pact_slots(char.classes)
@@ -1626,7 +1782,7 @@ with tab_traits:
 
 
 # ------------------------------------------------------------------------------
-# ONGLET 4 : COMPÉTENCES & SAUVEGARDES
+# ONGLET 5 : COMPÉTENCES & SAUVEGARDES
 # ------------------------------------------------------------------------------
 with tab_skills:
     st.markdown("### 📜 Maîtrises, Compétences & Sauvegardes")
@@ -1650,6 +1806,25 @@ with tab_skills:
         df_skills = pd.DataFrame(data_skills)
         st.dataframe(df_skills, hide_index=True, use_container_width=True, height=520)
 
+        with st.expander("⚙️ Modifier mes Compétences Maîtrisées & Expertises"):
+            all_skill_names = list(SKILL_ABILITY_MAP.keys())
+            new_profs = st.multiselect(
+                "Compétences maîtrisées (+Bonus de maîtrise)",
+                options=all_skill_names,
+                default=[s for s in char.skill_proficiencies if s in all_skill_names],
+                key="edit_skill_profs"
+            )
+            new_exps = st.multiselect(
+                "Expertises (+Double bonus de maîtrise)",
+                options=all_skill_names,
+                default=[s for s in char.skill_expertises if s in all_skill_names],
+                key="edit_skill_exps"
+            )
+            if st.button("Enregistrer les compétences", key="btn_save_skills"):
+                char.skill_proficiencies = new_profs
+                char.skill_expertises = new_exps
+                st.rerun()
+
     with col_sk_right:
         st.markdown("#### 🛡️ Jets de Sauvegarde")
         for ab in Ability:
@@ -1663,6 +1838,91 @@ with tab_skills:
                 <span style="color: {theme['accent']}; font-weight: bold; font-size: 1.15rem;">{st_val} <small style="color: #aaa;">| {mark}</small></span>
             </div>
             """, unsafe_allow_html=True)
+
+        with st.expander("⚙️ Modifier les Jets de Sauvegarde Maîtrisés"):
+            all_abs = list(Ability)
+            new_st = st.multiselect(
+                "Sauvegardes maîtrisées",
+                options=all_abs,
+                default=char.saving_throw_proficiencies,
+                format_func=lambda a: f"{a.value} ({a.name})",
+                key="edit_save_profs"
+            )
+            if st.button("Enregistrer les sauvegardes", key="btn_save_st"):
+                char.saving_throw_proficiencies = new_st
+                st.rerun()
+
+        st.divider()
+        st.markdown("#### 🗣️ Autres Maîtrises & Langues")
+        new_lang_prof = st.text_area(
+            "Langues parlées, maîtrises d'armures, armes, outils et instruments",
+            value=char.languages_and_proficiencies,
+            height=160,
+            placeholder="Ex: Langues : Commun, Elfique, Sylvain...\nMaîtrises : Armures légères, Arcs, Outils de voleur..."
+        )
+        if new_lang_prof != char.languages_and_proficiencies:
+            char.languages_and_proficiencies = new_lang_prof
+            st.rerun()
+
+
+# ------------------------------------------------------------------------------
+# ONGLET 6 : HISTOIRE, RP, APPARENCE & DÉTAILS (PAGES 1 & 2 DU PDF)
+# ------------------------------------------------------------------------------
+with tab_lore:
+    st.markdown("### 📖 Profil Roleplay, Apparence, Histoire & Trésors")
+    st.caption("Retrouvez et éditez ici toutes les informations de rôle, d'apparence, d'alliés et de lore issues des Pages 1 et 2 de votre fiche.")
+
+    # 1. Caractéristiques physiques (Page 2)
+    st.markdown("#### 👤 Caractéristiques Physiques")
+    p_c1, p_c2, p_c3, p_c4, p_c5, p_c6 = st.columns(6)
+    with p_c1:
+        char.age = st.text_input("Âge", value=char.age, placeholder="ex: 250 ans")
+    with p_c2:
+        char.height = st.text_input("Taille", value=char.height, placeholder="ex: 1m73")
+    with p_c3:
+        char.weight = st.text_input("Poids", value=char.weight, placeholder="ex: 60 kg")
+    with p_c4:
+        char.eyes = st.text_input("Yeux", value=char.eyes, placeholder="ex: Gris")
+    with p_c5:
+        char.skin = st.text_input("Peau", value=char.skin, placeholder="ex: Pâle")
+    with p_c6:
+        char.hair = st.text_input("Cheveux", value=char.hair, placeholder="ex: Gris-Argent")
+
+    st.divider()
+
+    # 2. Personnalité, Idéaux, Liens, Défauts (Page 1)
+    st.markdown("#### 🎭 Personnalité & Psychologie")
+    rp_c1, rp_c2 = st.columns(2)
+    with rp_c1:
+        char.personality_traits = st.text_area("Traits de Personnalité", value=char.personality_traits, height=120)
+        char.bonds = st.text_area("Liens", value=char.bonds, height=110)
+    with rp_c2:
+        char.ideals = st.text_area("Idéaux", value=char.ideals, height=120)
+        char.flaws = st.text_area("Défauts", value=char.flaws, height=110)
+
+    st.divider()
+
+    # 3. Apparence & Alliés / Organisations (Page 2)
+    col_app, col_allies = st.columns(2)
+    with col_app:
+        st.markdown("#### 🪞 Apparence du Personnage")
+        char.appearance = st.text_area("Description visuelle", value=char.appearance, height=160)
+    with col_allies:
+        st.markdown("#### 🤝 Alliés & Organisations")
+        char.allies = st.text_area("Factions, compagnons et contacts", value=char.allies, height=160)
+
+    st.divider()
+
+    # 4. Histoire du personnage (Backstory) & Trésors spéciaux (Page 2)
+    col_back, col_treas = st.columns([6, 4])
+    with col_back:
+        st.markdown("#### 📜 Histoire du Personnage (Backstory)")
+        char.backstory = st.text_area("Récit complet de vos origines et aventures", value=char.backstory, height=340)
+    with col_treas:
+        st.markdown("#### 💎 Trésors & Objets Harmonisés (Détails)")
+        char.treasure_notes = st.text_area("Propriétés détaillées des reliques et objets magiques", value=char.treasure_notes, height=160)
+        st.markdown("#### 🌿 Notes d'Aptitudes & Capacités Supplémentaires")
+        char.additional_features_notes = st.text_area("Notes complètes issues du PDF", value=char.additional_features_notes, height=145)
 
 
 # ==============================================================================
