@@ -28,6 +28,8 @@ from dataclasses import dataclass, field, asdict
 from enum import Enum
 
 import dnd_database as db
+import importlib
+importlib.reload(db)
 from dnd_importer import parse_pdf_character, parse_json_character
 
 # ==============================================================================
