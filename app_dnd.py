@@ -113,6 +113,15 @@ class Spell:
     description: str = ""
 
 @dataclass
+class Item:
+    name: str
+    quantity: int = 1
+    category: str = "Aventurier"
+    weight: float = 0.0
+    description: str = ""
+    is_equipped: bool = False
+
+@dataclass
 class CharacterSheet:
     name: str
     race: str
@@ -136,11 +145,25 @@ class CharacterSheet:
     pv_temp: int = 0
     speed: int = 9
     
+    # Bourse et Inventaire
+    currency: Dict[str, int] = field(default_factory=lambda: {"po": 0, "pa": 0, "pc": 0, "pe": 0, "pp": 0})
+    inventory: List[Item] = field(default_factory=list)
+    
     # Gestion des ressources (Consommables)
     death_saves: Dict[str, int] = field(default_factory=lambda: {"successes": 0, "failures": 0})
     spell_slots_used: Dict[int, int] = field(default_factory=dict)
     pact_slots_used: int = 0
     hit_dice_used: Dict[str, int] = field(default_factory=dict)
+
+    @property
+    def total_inventory_weight(self) -> float:
+        """Poids total de l'équipement dans l'inventaire en kg."""
+        return round(sum(item.weight * item.quantity for item in self.inventory), 1)
+
+    @property
+    def total_currency_po(self) -> float:
+        """Valeur totale estimée de la bourse convertie en Pièces d'Or (PO)."""
+        return db.calculate_currency_total_po(self.currency)
 
     @property
     def total_level(self) -> int:
@@ -249,6 +272,8 @@ class CharacterSheet:
             } if self.equipped_shield else None,
             "weapons": [asdict(w) for w in self.weapons],
             "known_spells": [asdict(s) for s in self.known_spells],
+            "currency": self.currency,
+            "inventory": [asdict(i) for i in self.inventory],
         }
 
     @classmethod
@@ -324,6 +349,29 @@ class CharacterSheet:
             except ValueError:
                 pass
 
+        # Devises et Bourse
+        curr_raw = data.get("currency", {})
+        currency = {
+            "po": int(curr_raw.get("po", 0)),
+            "pa": int(curr_raw.get("pa", 0)),
+            "pc": int(curr_raw.get("pc", 0)),
+            "pe": int(curr_raw.get("pe", 0)),
+            "pp": int(curr_raw.get("pp", 0)),
+        }
+
+        # Inventaire d'objets
+        inventory = [
+            Item(
+                name=it.get("name", "Objet"),
+                quantity=int(it.get("quantity", 1)),
+                category=it.get("category", "Aventurier"),
+                weight=float(it.get("weight", 0.0)),
+                description=it.get("description", ""),
+                is_equipped=bool(it.get("is_equipped", False))
+            )
+            for it in data.get("inventory", [])
+        ]
+
         return cls(
             name=data.get("name", "Héros Sans Nom"),
             race=data.get("race", "Humain"),
@@ -344,6 +392,8 @@ class CharacterSheet:
             pv_current=int(data.get("pv_current", 50)),
             pv_temp=int(data.get("pv_temp", 0)),
             speed=int(data.get("speed", 9)),
+            currency=currency,
+            inventory=inventory,
             death_saves=data.get("death_saves", {"successes": 0, "failures": 0}),
             spell_slots_used=slots_used,
             pact_slots_used=int(data.get("pact_slots_used", 0)),
@@ -381,7 +431,17 @@ def get_default_character() -> CharacterSheet:
         pv_max=10,
         pv_current=10,
         pv_temp=0,
-        speed=9
+        speed=9,
+        currency={"po": 15, "pa": 0, "pc": 0, "pe": 0, "pp": 0},
+        inventory=[
+            Item(name="Sac à dos d'aventurier", quantity=1, category="Aventurier", weight=2.5, description="Contient tout le nécessaire de voyage."),
+            Item(name="Paillasse (sac de couchage)", quantity=1, category="Aventurier", weight=3.0, description="Pour le repos long au bivouac."),
+            Item(name="Corde en chanvre (15 m)", quantity=1, category="Aventurier", weight=5.0, description="Solide et fiable."),
+            Item(name="Lanterne sourde", quantity=1, category="Aventurier", weight=1.0, description="Lumière vive sur 18m avec volet occultant."),
+            Item(name="Rations de voyage (1 jour)", quantity=5, category="Aventurier", weight=1.0, description="Vivres de route compactes."),
+            Item(name="Outre d'eau", quantity=1, category="Aventurier", weight=2.5, description="2 litres d'eau fraîche."),
+            Item(name="Potion de soins (2d4+2)", quantity=1, category="Potion", weight=0.2, description="Restaure 2d4+2 PV."),
+        ]
     )
     char.equipped_armor = Armor(
         name="Tissu / Vêtements",
@@ -710,8 +770,14 @@ with st.sidebar:
                     if st.button("Appliquer les données du PDF à la fiche"):
                         char.name = extracted_data["name"]
                         char.race = extracted_data["race"]
+                        if extracted_data.get("background"):
+                            char.background = extracted_data["background"]
+                        if extracted_data.get("alignment"):
+                            char.alignment = extracted_data["alignment"]
                         if extracted_data.get("classes"):
                             char.classes = extracted_data["classes"]
+                        if extracted_data.get("subclasses"):
+                            char.subclasses = extracted_data["subclasses"]
                         for ab_code, val in extracted_data.get("raw_abilities", {}).items():
                             try:
                                 char.raw_abilities[Ability[ab_code]] = val
@@ -719,7 +785,26 @@ with st.sidebar:
                                 pass
                         char.pv_max = extracted_data["pv_max"]
                         char.pv_current = extracted_data["pv_current"]
+                        char.pv_temp = extracted_data.get("pv_temp", 0)
                         char.speed = extracted_data["speed"]
+                        if extracted_data.get("currency"):
+                            char.currency = extracted_data["currency"]
+                        if extracted_data.get("inventory"):
+                            char.inventory = [
+                                Item(
+                                    name=it["name"],
+                                    quantity=it.get("quantity", 1),
+                                    category=it.get("category", "Aventurier"),
+                                    weight=it.get("weight", 0.0),
+                                    description=it.get("description", ""),
+                                    is_equipped=it.get("is_equipped", False)
+                                )
+                                for it in extracted_data["inventory"]
+                            ]
+                        if extracted_data.get("skill_proficiencies"):
+                            char.skill_proficiencies = list(set(char.skill_proficiencies + extracted_data["skill_proficiencies"]))
+                        # Synchronisation automatique des aptitudes officielles selon classes et niveaux
+                        db.sync_character_features(char)
                         st.success("Données du PDF injectées avec succès !")
                         st.rerun()
                 except Exception as e:
@@ -983,8 +1068,9 @@ st.divider()
 # 9. CORPS PRINCIPAL : ONGLETS DÉDIÉS EN PLEINE LARGEUR
 # ==============================================================================
 
-tab_arsenal, tab_grimoire, tab_traits, tab_skills = st.tabs([
+tab_arsenal, tab_inv, tab_grimoire, tab_traits, tab_skills = st.tabs([
     "⚔️ Arsenal & Combat",
+    "🎒 Inventaire & Bourse",
     "🔮 Grimoire & Sorts",
     "✨ Aptitudes de Classe & Dons",
     "📜 Compétences & Sauvegardes"
@@ -1048,6 +1134,202 @@ with tab_arsenal:
         ))
         st.success(f"{final_name} ajoutée à votre arsenal !")
         st.rerun()
+
+# ------------------------------------------------------------------------------
+# ONGLET 2 : INVENTAIRE & BOURSE DE MONNAIES
+# ------------------------------------------------------------------------------
+with tab_inv:
+    st.markdown("### 🎒 Inventaire & Bourse de Monnaies")
+    
+    # 1. Bourse (Les 5 monnaies officielles D&D 5e)
+    st.markdown("#### 🪙 Bourse & Trésor")
+    st.caption("Règles officielles de change : 1 PP = 10 PO | 1 PO = 2 PE = 10 PA = 100 PC")
+    
+    col_v1, col_v2 = st.columns([2, 5])
+    with col_v1:
+        st.metric("💰 Valeur Totale Estimée", f"{char.total_currency_po:,.2f} PO".replace(",", " "))
+    with col_v2:
+        st.caption("Charge totale de l'équipement :")
+        st.write(f"⚖️ **{char.total_inventory_weight} kg** transportés dans le sac")
+
+    col_pc, col_pa, col_pe, col_po, col_pp = st.columns(5)
+    with col_pc:
+        new_pc = st.number_input("🪙 Cuivre (PC)", min_value=0, max_value=100000, value=char.currency.get("pc", 0), step=1, key="curr_pc")
+        if new_pc != char.currency.get("pc", 0):
+            char.currency["pc"] = new_pc
+            st.rerun()
+    with col_pa:
+        new_pa = st.number_input("🥈 Argent (PA)", min_value=0, max_value=100000, value=char.currency.get("pa", 0), step=1, key="curr_pa")
+        if new_pa != char.currency.get("pa", 0):
+            char.currency["pa"] = new_pa
+            st.rerun()
+    with col_pe:
+        new_pe = st.number_input("⚡ Électrum (PE)", min_value=0, max_value=100000, value=char.currency.get("pe", 0), step=1, key="curr_pe")
+        if new_pe != char.currency.get("pe", 0):
+            char.currency["pe"] = new_pe
+            st.rerun()
+    with col_po:
+        new_po = st.number_input("💰 Or (PO)", min_value=0, max_value=100000, value=char.currency.get("po", 0), step=1, key="curr_po")
+        if new_po != char.currency.get("po", 0):
+            char.currency["po"] = new_po
+            st.rerun()
+    with col_pp:
+        new_pp = st.number_input("💎 Platine (PP)", min_value=0, max_value=100000, value=char.currency.get("pp", 0), step=1, key="curr_pp")
+        if new_pp != char.currency.get("pp", 0):
+            char.currency["pp"] = new_pp
+            st.rerun()
+
+    with st.expander("💸 Transaction Rapide (Ajouter ou Dépenser des Pièces)"):
+        t_c1, t_c2, t_c3 = st.columns([2, 2, 2])
+        with t_c1:
+            t_action = st.radio("Opération", ["Gagner 🟢", "Dépenser 🔴"], horizontal=True)
+        with t_c2:
+            t_amount = st.number_input("Montant", min_value=1, max_value=50000, value=10, key="quick_t_amount")
+        with t_c3:
+            t_type = st.selectbox(
+                "Type de pièce",
+                [("po", "Pièces d'Or (PO)"), ("pa", "Pièces d'Argent (PA)"), ("pc", "Pièces de Cuivre (PC)"), ("pe", "Pièces d'Électrum (PE)"), ("pp", "Pièces de Platine (PP)")],
+                format_func=lambda x: x[1],
+                key="quick_t_coin"
+            )[0]
+        if st.button("Valider la transaction", key="btn_apply_transaction"):
+            if "Gagner" in t_action:
+                char.currency[t_type] = char.currency.get(t_type, 0) + t_amount
+                st.success(f"+{t_amount} {t_type.upper()} ajoutés à la bourse !")
+            else:
+                current = char.currency.get(t_type, 0)
+                if current >= t_amount:
+                    char.currency[t_type] = current - t_amount
+                    st.success(f"-{t_amount} {t_type.upper()} dépensés !")
+                else:
+                    st.error(f"Fonds insuffisants ! Vous n'avez que {current} {t_type.upper()}.")
+            st.rerun()
+
+    st.divider()
+
+    # 2. Objets et équipement
+    st.markdown("#### 📦 Objets & Équipements du Sac")
+    if char.inventory:
+        for idx_item, item in enumerate(char.inventory):
+            col_i_info, col_i_qty, col_i_eq, col_i_del = st.columns([6, 2, 2, 1])
+            with col_i_info:
+                badge_style = "background: #34495e; color: #ecf0f1;"
+                if item.category == "Objet magique":
+                    badge_style = "background: #8e44ad; color: #fff;"
+                elif item.category == "Potion":
+                    badge_style = "background: #27ae60; color: #fff;"
+                elif item.category == "Vêtements":
+                    badge_style = "background: #d35400; color: #fff;"
+                
+                equipped_badge = " <span style='background:#2980b9; color:#fff; padding:2px 6px; border-radius:3px; font-size:0.75rem;'>ÉQUIPÉ</span>" if item.is_equipped else ""
+                
+                st.markdown(f"""
+                <div style="background: #1c2025; border-left: 3px solid {theme['primary']}; border-radius: 4px; padding: 10px 14px; margin-bottom: 8px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <span style="font-weight: bold; font-size: 1.05rem; color: #fff;">{item.name} {equipped_badge}</span>
+                        <span style="{badge_style} padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; text-transform: uppercase;">{item.category}</span>
+                    </div>
+                    <div style="font-size: 0.88rem; color: #c0b3a0; margin-top: 4px;">
+                        ⚖️ Poids unitaire : {item.weight} kg | Poids total : {round(item.weight * item.quantity, 2)} kg
+                        {f' — <i>{item.description}</i>' if item.description else ''}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with col_i_qty:
+                q_c1, q_c2 = st.columns(2)
+                with q_c1:
+                    if st.button("−", key=f"inv_sub_{idx_item}"):
+                        if item.quantity > 1:
+                            item.quantity -= 1
+                        else:
+                            char.inventory.pop(idx_item)
+                        st.rerun()
+                with q_c2:
+                    if st.button("➕", key=f"inv_add_{idx_item}"):
+                        item.quantity += 1
+                        st.rerun()
+                st.caption(f"Qté: **{item.quantity}**")
+            
+            with col_i_eq:
+                st.write("")
+                eq_label = "Déséquiper" if item.is_equipped else "Équiper"
+                if st.button(eq_label, key=f"inv_eq_{idx_item}"):
+                    item.is_equipped = not item.is_equipped
+                    st.rerun()
+
+            with col_i_del:
+                st.write("")
+                if st.button("🗑️", key=f"inv_del_{idx_item}", help="Supprimer cet objet"):
+                    char.inventory.pop(idx_item)
+                    st.rerun()
+    else:
+        st.info("Aucun objet dans votre sac pour le moment.")
+
+    st.divider()
+
+    # 3. Formulaires d'ajout d'objets
+    st.markdown("#### ➕ Ajouter un Objet à l'Inventaire")
+    tab_add_db, tab_add_custom = st.tabs(["📚 Depuis le Catalogue Officiel", "✍️ Objet Personnalisé"])
+    
+    with tab_add_db:
+        col_d1, col_d2, col_d3 = st.columns([4, 2, 2])
+        with col_d1:
+            item_keys = list(db.ITEMS_DB.keys())
+            chosen_item_name = st.selectbox("Choisir un objet officiel", item_keys, key="select_db_item")
+            item_info = db.ITEMS_DB[chosen_item_name]
+            st.caption(f"Catégorie : **{item_info['category']}** | Poids : **{item_info['weight']} kg**")
+            st.caption(f"ℹ️ {item_info['desc']}")
+        with col_d2:
+            chosen_qty = st.number_input("Quantité", min_value=1, max_value=100, value=1, key="db_item_qty")
+        with col_d3:
+            st.write("")
+            st.write("")
+            if st.button("📥 Ajouter au Sac", key="btn_add_db_item"):
+                existing = next((it for it in char.inventory if it.name == chosen_item_name), None)
+                if existing:
+                    existing.quantity += chosen_qty
+                else:
+                    char.inventory.append(Item(
+                        name=chosen_item_name,
+                        quantity=chosen_qty,
+                        category=item_info["category"],
+                        weight=item_info["weight"],
+                        description=item_info["desc"],
+                        is_equipped=False
+                    ))
+                st.success(f"{chosen_item_name} (x{chosen_qty}) ajouté !")
+                st.rerun()
+
+    with tab_add_custom:
+        col_c1, col_c2, col_c3 = st.columns([3, 2, 2])
+        with col_c1:
+            cust_name = st.text_input("Nom de l'objet", placeholder="ex: Cape elfique brodée", key="cust_item_name")
+        with col_c2:
+            cust_cat = st.selectbox("Catégorie", ["Aventurier", "Objet magique", "Potion", "Vêtements", "Outils", "Instrument", "Trésor / Gemme", "Autre"], key="cust_item_cat")
+        with col_c3:
+            cust_qty = st.number_input("Quantité", min_value=1, max_value=500, value=1, key="cust_item_qty")
+        
+        col_c4, col_c5 = st.columns([2, 4])
+        with col_c4:
+            cust_weight = st.number_input("Poids unitaire (kg)", min_value=0.0, max_value=200.0, value=0.5, step=0.1, key="cust_item_weight")
+        with col_c5:
+            cust_desc = st.text_input("Description / Propriétés", placeholder="ex: Confère avantage aux jets de discrétion...", key="cust_item_desc")
+
+        if st.button("✨ Créer et Ajouter cet Objet", key="btn_add_cust_item"):
+            if cust_name.strip():
+                char.inventory.append(Item(
+                    name=cust_name.strip(),
+                    quantity=cust_qty,
+                    category=cust_cat,
+                    weight=cust_weight,
+                    description=cust_desc.strip(),
+                    is_equipped=False
+                ))
+                st.success(f"Objet « {cust_name} » ajouté à l'inventaire !")
+                st.rerun()
+            else:
+                st.warning("Veuillez renseigner un nom pour l'objet.")
 
 
 # ------------------------------------------------------------------------------

@@ -602,6 +602,60 @@ SPELLS_DB = {
 }
 
 # ------------------------------------------------------------------------------
+# 5b. BASE DE DONNÉES DES OBJETS & ÉQUIPEMENTS STANDARDS (FR)
+# ------------------------------------------------------------------------------
+
+ITEMS_DB = {
+    # Équipement d'aventurier
+    "Sac à dos d'aventurier": {"category": "Aventurier", "weight": 2.5, "desc": "Sac spacieux permettant de ranger jusqu'à 15 kg ou 0,04 m³ d'équipement."},
+    "Paillasse (sac de couchage)": {"category": "Aventurier", "weight": 3.0, "desc": "Lit pliable et chaud indispensable pour les repos longs."},
+    "Corde en chanvre (15 m)": {"category": "Aventurier", "weight": 5.0, "desc": "Corde solide de 15m. Possède 2 points de vie et DC 17 FOR."},
+    "Corde en soie (15 m)": {"category": "Aventurier", "weight": 2.5, "desc": "Corde légère en soie de 15m. Possède 2 points de vie et DC 17 FOR."},
+    "Lanterne sourde": {"category": "Aventurier", "weight": 1.0, "desc": "Projette une lumière vive sur 18m et faible sur 18m supplémentaires. Un volet permet d'occulter la flamme."},
+    "Torche (lot de 5)": {"category": "Aventurier", "weight": 2.5, "desc": "Brûle pendant 1 heure en produisant une lumière vive sur un rayon de 6m."},
+    "Rations de voyage (1 jour)": {"category": "Aventurier", "weight": 1.0, "desc": "Nourriture sèche compacte suffisante pour un aventurier pendant un jour."},
+    "Outre d'eau": {"category": "Aventurier", "weight": 2.5, "desc": "Gourde en cuir étanche pouvant contenir jusqu'à 2 litres d'eau."},
+    "Boîte d'amadou": {"category": "Aventurier", "weight": 0.5, "desc": "Silex, briquet d'acier et amadou pour allumer un feu."},
+    "Grappin": {"category": "Aventurier", "weight": 2.0, "desc": "Crochet d'acier à 4 dents permettant d'ancrer une corde."},
+    "Pied-de-biche": {"category": "Aventurier", "weight": 2.5, "desc": "Donne l'avantage aux tests de Force lorsqu'on cherche à faire levier."},
+    "Huile (flacon)": {"category": "Aventurier", "weight": 0.5, "desc": "Alimente une lanterne pendant 6h ou s'enflamme pour 5 dégâts."},
+    "Menottes en fer": {"category": "Aventurier", "weight": 3.0, "desc": "Entraves métalliques robustes (DC 20 DEX pour s'échapper, DC 20 FOR pour briser)."},
+    "Craie (morceau)": {"category": "Aventurier", "weight": 0.05, "desc": "Utile pour marquer les portes et repérer son chemin."},
+    "Gamelle en métal": {"category": "Aventurier", "weight": 0.5, "desc": "Casserole en étain et couverts pour cuisiner au campement."},
+    
+    # Objets magiques & vêtements
+    "Cape de protection (+1 CA & Sauvegardes)": {"category": "Objet magique", "weight": 0.5, "desc": "Harmonisation requise. Confère un bonus de +1 à la CA et à tous les jets de sauvegarde."},
+    "Cape elfique (Avantage Discrétion)": {"category": "Objet magique", "weight": 0.5, "desc": "Harmonisation requise. Les créatures ont un désavantage aux tests de Perception pour vous voir et vous avez l'avantage en Discrétion."},
+    "Anneau de protection (+1 CA & Sauvegardes)": {"category": "Objet magique", "weight": 0.05, "desc": "Harmonisation requise. Confère un bonus de +1 à la CA et aux jets de sauvegarde."},
+    "Anneau d'action libre": {"category": "Objet magique", "weight": 0.05, "desc": "Harmonisation requise. Vous ignorez les terrains difficiles et ne pouvez être paralysé ni entravé par la magie."},
+    "Bottes elfiques": {"category": "Objet magique", "weight": 0.5, "desc": "Vos bruits de pas sont étouffés. Vous bénéficiez de l'avantage aux tests de Dextérité (Discrétion)."},
+    "Sac sans fond (Bag of Holding)": {"category": "Objet magique", "weight": 7.0, "desc": "Pèse toujours 7 kg mais peut contenir jusqu'à 250 kg et 1,8 m³ à l'intérieur."},
+    "Vêtements fins de noble": {"category": "Vêtements", "weight": 3.0, "desc": "Habits soignés en soie et broderies."},
+    "Vêtements de voyageur": {"category": "Vêtements", "weight": 2.0, "desc": "Bottes renforcées, cape chaude et pourpoint résistant."},
+    
+    # Potions & Consommables
+    "Potion de soins (2d4+2)": {"category": "Potion", "weight": 0.2, "desc": "Action pour boire. Restaure 2d4 + 2 points de vie immédiatement."},
+    "Potion de soins supérieure (4d4+4)": {"category": "Potion", "weight": 0.2, "desc": "Action pour boire. Restaure 4d4 + 4 points de vie immédiatement."},
+    "Potion d'invisibilité": {"category": "Potion", "weight": 0.2, "desc": "Confère l'invisibilité pendant 1 heure ou jusqu'à attaque."},
+    "Antidote (fiole)": {"category": "Potion", "weight": 0.1, "desc": "Boire confère l'avantage aux jets de sauvegarde contre le poison pendant 1 heure."},
+
+    # Outils & Instruments
+    "Outils de voleur": {"category": "Outils", "weight": 0.5, "desc": "Pieds-de-biche miniatures, crochets, limes et miroirs pour crocheter et désamorcer."},
+    "Outils d'herboristerie": {"category": "Outils", "weight": 1.5, "desc": "Nécessaire pour récolter des herbes et confectionner des potions de soins et antidotes."},
+    "Matériel d'alchimiste": {"category": "Outils", "weight": 4.0, "desc": "Alambics, cornues et réactifs pour produire de l'acide ou du feu grégeois."},
+    "Luth ouvragé": {"category": "Instrument", "weight": 1.0, "desc": "Instrument de musique de barde servant de focaliseur d'incantation."}
+}
+
+def calculate_currency_total_po(curr: dict) -> float:
+    """Calcule la valeur totale d'une bourse en Pièces d'Or (PO)."""
+    po = float(curr.get("po", 0))
+    pp = float(curr.get("pp", 0))
+    pe = float(curr.get("pe", 0))
+    pa = float(curr.get("pa", 0))
+    pc = float(curr.get("pc", 0))
+    return round(pp * 10.0 + po + pe * 0.5 + pa * 0.1 + pc * 0.01, 2)
+
+# ------------------------------------------------------------------------------
 # 6. CALCULATEURS DE DÉS DE VIE & EMPLACEMENTS DE SORTS OFFICIELS
 # ------------------------------------------------------------------------------
 
